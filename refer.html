@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRUE WALK - Referral</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #080b12;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 25px;
+    }
+
+    .back {
+      color: white;
+      text-decoration: none;
+      font-size: 28px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+    }
+
+    .card {
+      background: #111722;
+      border: 1px solid #252d3b;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .subtitle {
+      color: #929dad;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    .code-box {
+      background: #0b1019;
+      border: 1px solid #303949;
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .code {
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 14px;
+      background: #00d4ff;
+      color: #001018;
+      font-weight: bold;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .link-box {
+      background: #0b1019;
+      border: 1px solid #303949;
+      border-radius: 12px;
+      padding: 13px;
+      color: #b8c0ce;
+      font-size: 13px;
+      word-break: break-all;
+      margin-bottom: 10px;
+    }
+
+    .share-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #00d4ff;
+      color: #001018;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat {
+      background: #0b1019;
+      border: 1px solid #252d3b;
+      border-radius: 14px;
+      padding: 18px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 25px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      color: #8e99aa;
+      font-size: 13px;
+    }
+
+    .member {
+      padding: 14px 0;
+      border-bottom: 1px solid #252d3b;
+    }
+
+    .member:last-child {
+      border-bottom: none;
+    }
+
+    .member-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .member-mobile {
+      color: #8e99aa;
+      font-size: 13px;
+    }
+
+    .empty {
+      text-align: center;
+      color: #8e99aa;
+      padding: 20px 5px;
+      line-height: 1.5;
+    }
+
+    .loading {
+      text-align: center;
+      color: #929dad;
+      padding: 25px;
+    }
+
+    .error {
+      color: #ff8080;
+      background: #321a1e;
+      border: 1px solid #633037;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .message {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .success {
+      color: #55e58c;
+    }
+
+    @media (max-width: 400px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+
+  <div class="header">
+    <a href="home.html" class="back">‹</a>
+    <h1>Referral</h1>
+  </div>
+
+
+  <!-- REFERRAL CODE -->
+
+  <div id="referralArea">
+
+    <div class="loading">
+      Loading referral information...
+    </div>
+
+  </div>
+
+
+  <!-- STATS -->
+
+  <div class="card">
+
+    <div class="title">
+      Referral Overview
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <div
+          id="totalReferrals"
+          class="stat-number"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Total Referrals
+        </div>
+      </div>
+
+
+      <div class="stat">
+        <div
+          id="activeReferrals"
+          class="stat-number"
+        >
+          0
+        </div>
+
+        <div class="stat-label">
+          Active Referrals
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- REFERRED USERS -->
+
+  <div class="card">
+
+    <div class="title">
+      My Referrals
+    </div>
+
+    <div id="membersArea">
+
+      <div class="loading">
+        Loading...
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+  let currentReferralCode = "";
+
+
+  /* =========================
+     LOAD REFERRAL DATA
+  ========================= */
+
+  async function loadReferral() {
+
+    const referralArea =
+      document.getElementById(
+        "referralArea"
+      );
+
+    const membersArea =
+      document.getElementById(
+        "membersArea"
+      );
+
+
+    try {
+
+      /* LOGIN CHECK */
+
+      const meResponse =
+        await fetch(
+          "/api/me",
+          {
+            credentials: "include"
+          }
+        );
+
+
+      if (meResponse.status === 401) {
+
+        window.location.href =
+          "login.html";
+
+        return;
+
+      }
+
+
+      const meData =
+        await meResponse.json();
+
+
+      const user =
+        meData.user ||
+        meData;
+
+
+      const referralCode =
+        user.referral_code ||
+        user.referralCode ||
+        "";
+
+
+      currentReferralCode =
+        referralCode;
+
+
+      if (!referralCode) {
+
+        referralArea.innerHTML = `
+          <div class="error">
+            Referral code is not available.
+          </div>
+        `;
+
+      } else {
+
+        const referralLink =
+          window.location.origin +
+          "/register.html?ref=" +
+          encodeURIComponent(
+            referralCode
+          );
+
+
+        referralArea.innerHTML = `
+
+          <div class="card">
+
+            <div class="title">
+              Your Referral Code
+            </div>
+
+            <div class="subtitle">
+              Share your referral code with
+              friends who want to register.
+            </div>
+
+
+            <div class="code-box">
+
+              <div class="code">
+                ${escapeHtml(
+                  referralCode
+                )}
+              </div>
+
+              <button
+                class="copy-btn"
+                onclick="copyCode()"
+              >
+                Copy
+              </button>
+
+            </div>
+
+
+            <div
+              id="copyMessage"
+              class="message"
+            ></div>
+
+          </div>
+
+
+          <div class="card">
+
+            <div class="title">
+              Referral Link
+            </div>
+
+            <div class="link-box">
+              ${escapeHtml(
+                referralLink
+              )}
+            </div>
+
+            <button
+              class="share-btn"
+              onclick="shareReferral()"
+            >
+              Share Referral Link
+            </button>
+
+            <div
+              id="shareMessage"
+              class="message"
+            ></div>
+
+          </div>
+
+        `;
+
+      }
+
+
+      /* =========================
+         REFERRAL USERS
+      ========================= */
+
+      await loadReferralUsers();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      referralArea.innerHTML = `
+        <div class="error">
+          Unable to load referral information.
+        </div>
+      `;
+
+      membersArea.innerHTML = `
+        <div class="error">
+          Unable to load referrals.
+        </div>
+      `;
+
+    }
+
+  }
+
+
+  /* =========================
+     LOAD REFERRAL USERS
+  ========================= */
+
+  async function loadReferralUsers() {
+
+    const membersArea =
+      document.getElementById(
+        "membersArea"
+      );
+
+
+    try {
+
+      /*
+        Backend में referral endpoint
+        उपलब्ध होने पर data आएगा.
+      */
+
+      const response =
+        await fetch(
+          "/api/referrals",
+          {
+            credentials: "include"
+          }
+        );
+
+
+      if (response.status === 404) {
+
+        /*
+          Endpoint अभी backend में नहीं है.
+          इसलिए page crash नहीं करेगा.
+        */
+
+        showEmptyReferrals(
+          "No referral data available yet."
+        );
+
+        return;
+
+      }
+
+
+      if (response.status === 401) {
+
+        window.location.href =
+          "login.html";
+
+        return;
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.message ||
+          "Unable to load referrals."
+        );
+
+      }
+
+
+      const users =
+        Array.isArray(data)
+          ? data
+          : (
+              data.referrals ||
+              data.users ||
+              []
+            );
+
+
+      updateStats(users);
+
+
+      if (users.length === 0) {
+
+        showEmptyReferrals(
+          "No referrals yet. Share your referral link to invite users."
+        );
+
+        return;
+
+      }
+
+
+      membersArea.innerHTML = "";
+
+
+      users.forEach(user => {
+
+        const name =
+          user.name ||
+          user.full_name ||
+          "User";
+
+
+        const mobile =
+          user.mobile ||
+          user.phone ||
+          user.phone_number ||
+          "-";
+
+
+        const member =
+          document.createElement(
+            "div"
+          );
+
+
+        member.className =
+          "member";
+
+
+        member.innerHTML = `
+
+          <div class="member-name">
+            ${escapeHtml(name)}
+          </div>
+
+          <div class="member-mobile">
+            ${escapeHtml(mobile)}
+          </div>
+
+        `;
+
+
+        membersArea.appendChild(
+          member
+        );
+
+      });
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      showEmptyReferrals(
+        "No referral data available yet."
+      );
+
+    }
+
+  }
+
+
+  /* =========================
+     STATS
+  ========================= */
+
+  function updateStats(users) {
+
+    const total =
+      users.length;
+
+
+    const active =
+      users.filter(user => {
+
+        const status =
+          String(
+            user.status ||
+            ""
+          ).toLowerCase();
+
+        return (
+          status === "active" ||
+          status === "approved"
+        );
+
+      }).length;
+
+
+    document.getElementById(
+      "totalReferrals"
+    ).textContent = total;
+
+
+    document.getElementById(
+      "activeReferrals"
+    ).textContent = active;
+
+  }
+
+
+  /* =========================
+     EMPTY
+  ========================= */
+
+  function showEmptyReferrals(
+    message
+  ) {
+
+    document.getElementById(
+      "membersArea"
+    ).innerHTML = `
+
+      <div class="empty">
+        👥<br><br>
+        ${escapeHtml(message)}
+      </div>
+
+    `;
+
+  }
+
+
+  /* =========================
+     COPY CODE
+  ========================= */
+
+  async function copyCode() {
+
+    const message =
+      document.getElementById(
+        "copyMessage"
+      );
+
+
+    if (!currentReferralCode) {
+
+      message.textContent =
+        "Referral code unavailable.";
+
+      return;
+
+    }
+
+
+    try {
+
+      await navigator.clipboard.writeText(
+        currentReferralCode
+      );
+
+
+      message.className =
+        "message success";
+
+      message.textContent =
+        "Referral code copied.";
+
+    } catch (error) {
+
+      message.className =
+        "message";
+
+      message.textContent =
+        "Unable to copy code.";
+
+    }
+
+  }
+
+
+  /* =========================
+     SHARE LINK
+  ========================= */
+
+  async function shareReferral() {
+
+    const shareMessage =
+      document.getElementById(
+        "shareMessage"
+      );
+
+
+    const link =
+      window.location.origin +
+      "/register.html?ref=" +
+      encodeURIComponent(
+        currentReferralCode
+      );
+
+
+    if (
+      navigator.share
+    ) {
+
+      try {
+
+        await navigator.share({
+
+          title: "TRUE WALK",
+
+          text:
+            "Join TRUE WALK using my referral link.",
+
+          url: link
+
+        });
+
+
+      } catch (error) {
+
+        /*
+          User cancelled share.
+        */
+
+      }
+
+      return;
+
+    }
+
+
+    try {
+
+      await navigator.clipboard.writeText(
+        link
+      );
+
+
+      shareMessage.className =
+        "message success";
+
+      shareMessage.textContent =
+        "Referral link copied.";
+
+    } catch (error) {
+
+      shareMessage.className =
+        "message";
+
+      shareMessage.textContent =
+        "Unable to copy referral link.";
+
+    }
+
+  }
+
+
+  /* =========================
+     HTML ESCAPE
+  ========================= */
+
+  function escapeHtml(value) {
+
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  /* =========================
+     START
+  ========================= */
+
+  loadReferral();
+
+</script>
+
+</body>
+</html>

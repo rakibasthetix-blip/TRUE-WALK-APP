@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - Home</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7fb, #eef2f7);
+      color: #222;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #111827, #24344d);
+      color: white;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.12);
+    }
+
+    .header h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: .5px;
+    }
+
+    .header h2 span {
+      color: #ff7a00;
+    }
+
+    .logout-btn {
+      background: white;
+      color: #ff6b00;
+      border: none;
+      padding: 9px 15px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 3px 10px rgba(0,0,0,.12);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .welcome {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.07);
+      border: 1px solid #e9edf3;
+    }
+
+    .welcome h1 {
+      margin: 0 0 9px;
+      font-size: 26px;
+      color: #172033;
+    }
+
+    .welcome h1 span {
+      color: #ff6b00;
+    }
+
+    .welcome p {
+      margin: 5px 0;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .welcome p span {
+      color: #ff6b00;
+      font-weight: bold;
+    }
+
+    .balance-card {
+      background: linear-gradient(135deg, #ff6b00, #ff9d3d);
+      color: white;
+      padding: 26px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 28px rgba(255,107,0,.23);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .balance-card::after {
+      content: "";
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.10);
+      right: -65px;
+      top: -70px;
+    }
+
+    .balance-card h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      opacity: .92;
+    }
+
+    .balance {
+      font-size: 36px;
+      font-weight: bold;
+      position: relative;
+      z-index: 2;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 19px;
+      border-radius: 17px;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.06);
+      border: 1px solid #e9edf3;
+    }
+
+    .stat-icon {
+      width: 43px;
+      height: 43px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 13px;
+      background: #fff1e7;
+      font-size: 21px;
+      margin-bottom: 11px;
+    }
+
+    .stat-card h4 {
+      margin: 0 0 8px;
+      color: #777;
+      font-size: 13px;
+    }
+
+    .stat-card p {
+      margin: 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #172033;
+    }
+
+    .section-title {
+      margin: 25px 2px 13px;
+      font-size: 19px;
+      font-weight: bold;
+      color: #172033;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .action {
+      background: white;
+      padding: 20px 15px;
+      border-radius: 17px;
+      text-decoration: none;
+      color: #222;
+      text-align: center;
+      box-shadow: 0 5px 18px rgba(0,0,0,0.06);
+      border: 1px solid #e9edf3;
+      font-weight: bold;
+      transition: .2s;
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .action:hover {
+      transform: translateY(-3px);
+      border-color: #ffb477;
+      background: #fff9f4;
+    }
+
+    .action-icon {
+      font-size: 27px;
+    }
+
+    .action-name {
+      font-size: 14px;
+    }
+
+    .plans {
+      background: linear-gradient(180deg, #fff, #fff8f2);
+    }
+
+    .deposit {
+      background: linear-gradient(180deg, #fff, #f1fff5);
+    }
+
+    .withdraw {
+      background: linear-gradient(180deg, #fff, #fff3f3);
+    }
+
+    .refer {
+      background: linear-gradient(180deg, #fff, #f3f7ff);
+    }
+
+    .orders {
+      background: linear-gradient(180deg, #fff, #f8f3ff);
+    }
+
+    .profile {
+      background: linear-gradient(180deg, #fff, #f1ffff);
+    }
+
+    .error {
+      display: none;
+      background: #ffe5e5;
+      color: #c00;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ffcaca;
+    }
+
+    @media (max-width: 700px) {
+
+      .header {
+        padding: 16px 14px;
+      }
+
+      .header h2 {
+        font-size: 19px;
+      }
+
+      .container {
+        padding: 15px;
+      }
+
+      .welcome {
+        padding: 19px;
+      }
+
+      .welcome h1 {
+        font-size: 23px;
+      }
+
+      .balance-card {
+        padding: 23px;
+      }
+
+      .balance {
+        font-size: 30px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 11px;
+      }
+
+      .stat-card {
+        padding: 15px;
+      }
+
+      .stat-card p {
+        font-size: 18px;
+      }
+
+      .actions {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .action {
+        min-height: 105px;
+        padding: 16px 10px;
+      }
+
+      .action-icon {
+        font-size: 25px;
+      }
+    }
+
+    @media (max-width: 380px) {
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .balance {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="header">
+
+    <h2>
+      TRUE <span>WALK</span>
+    </h2>
+
+    <button
+      class="logout-btn"
+      id="logoutBtn">
+      Logout
+    </button>
+
+  </header>
+
+
+  <main class="container">
+
+    <!-- WELCOME -->
+
+    <section class="welcome">
+
+      <h1>
+        👋 Welcome,
+        <span id="userName">User</span>
+      </h1>
+
+      <p>
+        📱 Phone:
+        <span id="userPhone">
+          Loading...
+        </span>
+      </p>
+
+    </section>
+
+
+    <!-- ERROR -->
+
+    <div
+      class="error"
+      id="errorMessage">
+    </div>
+
+
+    <!-- BALANCE -->
+
+    <section class="balance-card">
+
+      <h3>
+        💰 Available Balance
+      </h3>
+
+      <div
+        class="balance"
+        id="availableBalance">
+
+        ₹0.00
+
+      </div>
+
+    </section>
+
+
+    <!-- STATS -->
+
+    <section class="stats">
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          📥
+        </div>
+
+        <h4>
+          Total Deposit
+        </h4>
+
+        <p id="totalDeposit">
+          ₹0.00
+        </p>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon">
+          📤
+        </div>
+
+        <h4>
+          Total Withdrawal
+        </h4>
+
+        <p id="totalWithdrawal">
+          ₹0.00
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- ACTION TITLE -->
+
+    <div class="section-title">
+      Quick Actions
+    </div>
+
+
+    <!-- ACTIONS -->
+
+    <section class="actions">
+
+      <a
+        href="plans.html"
+        class="action plans">
+
+        <div class="action-icon">
+          📋
+        </div>
+
+        <div class="action-name">
+          Plans
+        </div>
+
+      </a>
+
+
+      <a
+        href="deposit.html"
+        class="action deposit">
+
+        <div class="action-icon">
+          💳
+        </div>
+
+        <div class="action-name">
+          Deposit
+        </div>
+
+      </a>
+
+
+      <a
+        href="withdraw.html"
+        class="action withdraw">
+
+        <div class="action-icon">
+          💸
+        </div>
+
+        <div class="action-name">
+          Withdraw
+        </div>
+
+      </a>
+
+
+      <a
+        href="refer.html"
+        class="action refer">
+
+        <div class="action-icon">
+          🔗
+        </div>
+
+        <div class="action-name">
+          Referral
+        </div>
+
+      </a>
+
+
+      <a
+        href="orders.html"
+        class="action orders">
+
+        <div class="action-icon">
+          📦
+        </div>
+
+        <div class="action-name">
+          Orders
+        </div>
+
+      </a>
+
+
+      <a
+        href="profile.html"
+        class="action profile">
+
+        <div class="action-icon">
+          👤
+        </div>
+
+        <div class="action-name">
+          Profile
+        </div>
+
+      </a>
+
+    </section>
+
+  </main>
+
+
+  <script>
+
+    function formatMoney(amount) {
+
+      const number =
+        Number(amount || 0);
+
+      return "₹" +
+        number.toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+
+    }
+
+
+    async function loadHome() {
+
+      try {
+
+        const response =
+          await fetch("/api/me", {
+            credentials: "include",
+            cache: "no-store"
+          });
+
+
+        if (!response.ok) {
+
+          window.location.href =
+            "login.html";
+
+          return;
+
+        }
+
+
+        const data =
+          await response.json();
+
+
+        console.log(
+          "ME API:",
+          data
+        );
+
+
+        if (data.user) {
+
+          document.getElementById(
+            "userName"
+          ).textContent =
+            data.user.name || "User";
+
+
+          document.getElementById(
+            "userPhone"
+          ).textContent =
+            data.user.phone || "";
+
+        }
+
+
+        if (
+          data.balance !== undefined
+        ) {
+
+          document.getElementById(
+            "availableBalance"
+          ).textContent =
+            formatMoney(
+              data.balance
+            );
+
+        }
+
+
+        try {
+
+          const walletResponse =
+            await fetch("/api/wallet", {
+              credentials: "include",
+              cache: "no-store"
+            });
+
+
+          if (walletResponse.ok) {
+
+            const walletData =
+              await walletResponse.json();
+
+
+            console.log(
+              "WALLET API:",
+              walletData
+            );
+
+
+            if (
+              walletData.balance !== undefined
+            ) {
+
+              document.getElementById(
+                "availableBalance"
+              ).textContent =
+                formatMoney(
+                  walletData.balance
+                );
+
+            }
+
+
+            if (
+              Array.isArray(
+                walletData.transactions
+              )
+            ) {
+
+              let totalDeposit = 0;
+
+              let totalWithdrawal = 0;
+
+
+              walletData.transactions.forEach(
+                function(transaction) {
+
+                  const amount =
+                    Number(
+                      transaction.amount || 0
+                    );
+
+
+                  if (
+                    transaction.type ===
+                    "deposit"
+                  ) {
+
+                    totalDeposit +=
+                      Math.abs(amount);
+
+                  }
+
+
+                  if (
+                    transaction.type ===
+                    "withdrawal"
+                  ) {
+
+                    totalWithdrawal +=
+                      Math.abs(amount);
+
+                  }
+
+                }
+              );
+
+
+              document.getElementById(
+                "totalDeposit"
+              ).textContent =
+                formatMoney(
+                  totalDeposit
+                );
+
+
+              document.getElementById(
+                "totalWithdrawal"
+              ).textContent =
+                formatMoney(
+                  totalWithdrawal
+                );
+
+            }
+
+          }
+
+        } catch (walletError) {
+
+          console.log(
+            "Wallet error:",
+            walletError
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Home error:",
+          error
+        );
+
+
+        const errorMessage =
+          document.getElementById(
+            "errorMessage"
+          );
+
+
+        errorMessage.textContent =
+          "Unable to load account information.";
+
+
+        errorMessage.style.display =
+          "block";
+
+      }
+
+    }
+
+
+    document
+      .getElementById("logoutBtn")
+      .addEventListener(
+        "click",
+        async function() {
+
+          try {
+
+            await fetch(
+              "/api/logout",
+              {
+                method: "POST",
+                credentials: "include"
+              }
+            );
+
+          } catch (error) {
+
+            console.log(
+              "Logout error:",
+              error
+            );
+
+          }
+
+
+          window.location.href =
+            "login.html";
+
+        }
+      );
+
+
+    loadHome();
+
+  </script>
+
+</body>
+</html>

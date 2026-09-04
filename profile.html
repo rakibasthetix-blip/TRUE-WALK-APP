@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - Profile</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #080b12;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 25px;
+    }
+
+    .back {
+      color: white;
+      text-decoration: none;
+      font-size: 28px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+    }
+
+    .profile-card {
+      background: #111722;
+      border: 1px solid #252d3b;
+      border-radius: 20px;
+      padding: 25px 20px;
+      margin-bottom: 18px;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #00d4ff;
+      color: #001018;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 30px;
+      font-weight: bold;
+
+      margin: 0 auto 15px;
+    }
+
+    .user-name {
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .user-mobile {
+      text-align: center;
+      color: #8e99aa;
+      margin-top: 6px;
+      font-size: 14px;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+
+      padding: 15px 0;
+      border-bottom: 1px solid #252d3b;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #8e99aa;
+      font-size: 14px;
+    }
+
+    .value {
+      color: #fff;
+      font-size: 14px;
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .referral-box {
+      background: #0b1019;
+      border: 1px solid #303949;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .referral-code {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      width: auto;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 9px;
+      background: #00d4ff;
+      color: #001018;
+      font-weight: bold;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .menu {
+      background: #111722;
+      border: 1px solid #252d3b;
+      border-radius: 18px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .menu a {
+      display: block;
+      padding: 17px 18px;
+      color: #fff;
+      text-decoration: none;
+      border-bottom: 1px solid #252d3b;
+    }
+
+    .menu a:last-child {
+      border-bottom: none;
+    }
+
+    .menu a:hover {
+      background: #171e2a;
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #ff5555;
+      border-radius: 12px;
+      background: transparent;
+      color: #ff7070;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .logout-btn:hover {
+      background: #321a1e;
+    }
+
+    .loading {
+      text-align: center;
+      color: #929dad;
+      padding: 30px;
+    }
+
+    .error {
+      background: #321a1e;
+      border: 1px solid #633037;
+      color: #ff8080;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .message {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .success {
+      color: #55e58c;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+      <a href="home.html" class="back">‹</a>
+      <h1>My Profile</h1>
+    </div>
+
+
+    <!-- PROFILE -->
+
+    <div id="profileArea">
+
+      <div class="loading">
+        Loading profile...
+      </div>
+
+    </div>
+
+
+    <!-- MENU -->
+
+    <div class="menu">
+
+      <a href="orders.html">
+        📋 &nbsp; My Orders
+      </a>
+
+      <a href="refer.html">
+        👥 &nbsp; Referral
+      </a>
+
+      <a href="deposit.html">
+        💳 &nbsp; Deposit
+      </a>
+
+      <a href="withdraw.html">
+        💸 &nbsp; Withdraw
+      </a>
+
+    </div>
+
+
+    <!-- LOGOUT -->
+
+    <button
+      id="logoutBtn"
+      class="logout-btn"
+    >
+      Logout
+    </button>
+
+    <div
+      id="logoutMessage"
+      class="message"
+    ></div>
+
+  </div>
+
+
+<script>
+
+  /* =========================
+     LOAD PROFILE
+  ========================= */
+
+  async function loadProfile() {
+
+    const profileArea =
+      document.getElementById("profileArea");
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/me",
+          {
+            credentials: "include"
+          }
+        );
+
+
+      if (response.status === 401) {
+
+        window.location.href =
+          "login.html";
+
+        return;
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.message ||
+          "Unable to load profile."
+        );
+
+      }
+
+
+      /*
+        Backend response में user object
+        हो तो उसे use करेंगे.
+      */
+
+      const user =
+        data.user ||
+        data;
+
+
+      const name =
+        user.name ||
+        user.full_name ||
+        "User";
+
+
+      const mobile =
+        user.mobile ||
+        user.phone ||
+        user.phone_number ||
+        "-";
+
+
+      const referralCode =
+        user.referral_code ||
+        user.referralCode ||
+        "-";
+
+
+      /*
+        Name का पहला letter avatar में
+      */
+
+      const firstLetter =
+        name
+          .trim()
+          .charAt(0)
+          .toUpperCase();
+
+
+      profileArea.innerHTML = `
+
+        <div class="profile-card">
+
+          <div class="avatar">
+            ${escapeHtml(firstLetter)}
+          </div>
+
+          <div class="user-name">
+            ${escapeHtml(name)}
+          </div>
+
+          <div class="user-mobile">
+            ${escapeHtml(mobile)}
+          </div>
+
+        </div>
+
+
+        <div class="profile-card">
+
+          <div class="section-title">
+            Account Information
+          </div>
+
+
+          <div class="info-row">
+
+            <div class="label">
+              Name
+            </div>
+
+            <div class="value">
+              ${escapeHtml(name)}
+            </div>
+
+          </div>
+
+
+          <div class="info-row">
+
+            <div class="label">
+              Mobile Number
+            </div>
+
+            <div class="value">
+              ${escapeHtml(mobile)}
+            </div>
+
+          </div>
+
+
+          <div class="info-row">
+
+            <div class="label">
+              Referral Code
+            </div>
+
+            <div class="value">
+              ${escapeHtml(referralCode)}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="profile-card">
+
+          <div class="section-title">
+            Your Referral Code
+          </div>
+
+          <div class="referral-box">
+
+            <div
+              id="referralCode"
+              class="referral-code"
+            >
+              ${escapeHtml(referralCode)}
+            </div>
+
+            <button
+              class="copy-btn"
+              onclick="copyReferral()"
+            >
+              Copy
+            </button>
+
+          </div>
+
+          <div
+            id="copyMessage"
+            class="message"
+          ></div>
+
+        </div>
+
+      `;
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      profileArea.innerHTML = `
+
+        <div class="error">
+          ${escapeHtml(
+            error.message ||
+            "Unable to load profile."
+          )}
+        </div>
+
+      `;
+
+    }
+
+  }
+
+
+  /* =========================
+     COPY REFERRAL
+  ========================= */
+
+  async function copyReferral() {
+
+    const codeElement =
+      document.getElementById(
+        "referralCode"
+      );
+
+    const message =
+      document.getElementById(
+        "copyMessage"
+      );
+
+
+    if (!codeElement) {
+      return;
+    }
+
+
+    const code =
+      codeElement.textContent.trim();
+
+
+    if (!code || code === "-") {
+
+      message.className =
+        "message";
+
+      message.textContent =
+        "Referral code not available.";
+
+      return;
+
+    }
+
+
+    try {
+
+      await navigator.clipboard.writeText(
+        code
+      );
+
+      message.className =
+        "message success";
+
+      message.textContent =
+        "Referral code copied.";
+
+    } catch (error) {
+
+      message.className =
+        "message";
+
+      message.textContent =
+        "Unable to copy referral code.";
+
+    }
+
+  }
+
+
+  /* =========================
+     LOGOUT
+  ========================= */
+
+  document
+    .getElementById("logoutBtn")
+    .addEventListener(
+      "click",
+      async function() {
+
+        const button =
+          this;
+
+        const message =
+          document.getElementById(
+            "logoutMessage"
+          );
+
+
+        button.disabled = true;
+
+        button.textContent =
+          "Logging out...";
+
+
+        try {
+
+          const response =
+            await fetch(
+              "/api/logout",
+              {
+                method: "POST",
+                credentials: "include"
+              }
+            );
+
+
+          if (!response.ok) {
+
+            throw new Error(
+              "Logout failed."
+            );
+
+          }
+
+
+          window.location.href =
+            "login.html";
+
+
+        } catch (error) {
+
+          console.error(error);
+
+          message.className =
+            "message";
+
+          message.textContent =
+            error.message ||
+            "Logout failed.";
+
+          button.disabled = false;
+
+          button.textContent =
+            "Logout";
+
+        }
+
+      }
+    );
+
+
+  /* =========================
+     HTML ESCAPE
+  ========================= */
+
+  function escapeHtml(value) {
+
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  /* =========================
+     START
+  ========================= */
+
+  loadProfile();
+
+</script>
+
+</body>
+</html>

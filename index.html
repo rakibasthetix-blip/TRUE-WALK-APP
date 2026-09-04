@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - Dashboard</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --black: #050505;
+      --black2: #0d0d0d;
+      --card: #111111;
+      --gold: #d6a84f;
+      --gold2: #f3cf72;
+      --text: #ffffff;
+      --muted: #999;
+      --border: rgba(214,168,79,0.22);
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(214,168,79,0.10),
+          transparent 32%
+        ),
+        radial-gradient(
+          circle at bottom left,
+          rgba(214,168,79,0.06),
+          transparent 30%
+        ),
+        var(--black);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* =========================
+       LOADING
+    ========================= */
+
+    .loading {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--black);
+      color: var(--gold2);
+    }
+
+    .loading-box {
+      text-align: center;
+    }
+
+    .loading-logo {
+      width: 65px;
+      height: 65px;
+      margin: 0 auto 15px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold2);
+      font-weight: 900;
+      font-size: 18px;
+      box-shadow: 0 0 25px rgba(214,168,79,0.18);
+    }
+
+    /* =========================
+       DASHBOARD
+    ========================= */
+
+    .dashboard {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* =========================
+       HEADER
+    ========================= */
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+
+      background: rgba(5,5,5,0.95);
+      backdrop-filter: blur(15px);
+
+      border-bottom: 1px solid var(--border);
+
+      padding: 15px 22px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .brand-logo {
+      width: 43px;
+      height: 43px;
+      border-radius: 12px;
+      object-fit: contain;
+      background: #090909;
+      border: 1px solid rgba(214,168,79,0.35);
+      padding: 5px;
+    }
+
+    .brand-title {
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: var(--gold2);
+    }
+
+    .brand-subtitle {
+      margin-top: 4px;
+      font-size: 9px;
+      color: #777;
+      letter-spacing: 2px;
+    }
+
+    .logout-btn {
+      border: 1px solid rgba(214,168,79,0.35);
+      background: #151515;
+      color: var(--gold2);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .logout-btn:hover {
+      background: var(--gold);
+      color: #050505;
+    }
+
+    /* =========================
+       CONTAINER
+    ========================= */
+
+    .container {
+      width: 100%;
+      max-width: 1150px;
+      margin: auto;
+      padding: 28px 18px 50px;
+    }
+
+    /* =========================
+       WELCOME
+    ========================= */
+
+    .welcome {
+      position: relative;
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(214,168,79,0.13),
+          rgba(17,17,17,0.96) 48%,
+          rgba(5,5,5,1)
+        );
+
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      margin-bottom: 20px;
+
+      box-shadow:
+        0 15px 50px rgba(0,0,0,0.45),
+        inset 0 1px rgba(255,255,255,0.03);
+    }
+
+    .welcome-tag {
+      display: inline-block;
+      color: var(--gold2);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .welcome h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      font-weight: 900;
+    }
+
+    .welcome h1 span {
+      color: var(--gold2);
+    }
+
+    .welcome p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .phone-value {
+      color: #ddd;
+    }
+
+    /* =========================
+       BALANCE
+    ========================= */
+
+    .balance-card {
+      position: relative;
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          135deg,
+          #18130a,
+          #0e0e0e 60%
+        );
+
+      border: 1px solid rgba(214,168,79,0.55);
+      border-radius: 22px;
+      padding: 25px;
+      margin-bottom: 18px;
+
+      box-shadow:
+        0 15px 45px rgba(0,0,0,0.40),
+        inset 0 0 35px rgba(214,168,79,0.035);
+    }
+
+    .balance-label {
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .balance-value {
+      margin-top: 9px;
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--gold2);
+    }
+
+    .balance-note {
+      margin-top: 8px;
+      color: #777;
+      font-size: 12px;
+    }
+
+    /* =========================
+       STATS
+    ========================= */
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card {
+      background: linear-gradient(145deg, #141414, #0d0d0d);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 19px;
+      padding: 21px;
+    }
+
+    .stat-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 13px;
+    }
+
+    .stat-title {
+      color: #999;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .stat-icon {
+      width: 35px;
+      height: 35px;
+      border-radius: 10px;
+      background: rgba(214,168,79,0.08);
+      border: 1px solid rgba(214,168,79,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .stat-value {
+      font-size: 25px;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    /* =========================
+       SECTION
+    ========================= */
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 28px 2px 14px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .section-title span {
+      color: #777;
+      font-size: 11px;
+    }
+
+    /* =========================
+       ACTIONS
+    ========================= */
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .action-btn {
+      position: relative;
+
+      display: flex;
+      align-items: center;
+      gap: 13px;
+
+      text-decoration: none;
+
+      background: linear-gradient(145deg, #151515, #0c0c0c);
+      color: #fff;
+
+      padding: 18px 17px;
+
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.07);
+
+      font-weight: 800;
+      font-size: 14px;
+
+      transition: 0.2s;
+    }
+
+    .action-btn:hover {
+      border-color: rgba(214,168,79,0.45);
+      background: linear-gradient(145deg, #1b160d, #0d0d0d);
+      transform: translateY(-2px);
+    }
+
+    .action-icon {
+      width: 39px;
+      height: 39px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 11px;
+
+      background: rgba(214,168,79,0.08);
+      border: 1px solid rgba(214,168,79,0.16);
+
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .action-text {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .action-text small {
+      color: #666;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* =========================
+       ERROR
+    ========================= */
+
+    .error-message {
+      display: none;
+      margin: 18px 0;
+      padding: 14px;
+      background: rgba(180,0,32,0.12);
+      border: 1px solid rgba(255,80,100,0.25);
+      color: #ff8f9d;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    /* =========================
+       FOOTER
+    ========================= */
+
+    .footer {
+      text-align: center;
+      color: #555;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-top: 35px;
+    }
+
+    /* =====================================================
+       INVEST INFO POPUP
+    ===================================================== */
+
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+
+      z-index: 9999;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 18px;
+
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(10px);
+    }
+
+    .popup {
+      width: 100%;
+      max-width: 430px;
+
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(214,168,79,0.13),
+          transparent 35%
+        ),
+        linear-gradient(
+          145deg,
+          #151515,
+          #080808
+        );
+
+      border: 1px solid rgba(214,168,79,0.45);
+      border-radius: 24px;
+
+      padding: 27px 22px 22px;
+
+      box-shadow:
+        0 30px 90px rgba(0,0,0,0.75),
+        0 0 50px rgba(214,168,79,0.08);
+
+      animation: popupIn 0.25s ease-out;
+    }
+
+    @keyframes popupIn {
+      from {
+        opacity: 0;
+        transform: translateY(15px) scale(0.97);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .popup-brand {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .popup-logo {
+      width: 62px;
+      height: 62px;
+
+      margin: 0 auto 13px;
+
+      border-radius: 17px;
+
+      background: #0b0b0b;
+
+      border: 1px solid rgba(214,168,79,0.55);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      color: var(--gold2);
+
+      font-size: 20px;
+      font-weight: 900;
+
+      box-shadow:
+        0 0 30px rgba(214,168,79,0.10);
+    }
+
+    .popup-title {
+      margin: 0;
+
+      font-size: 25px;
+      font-weight: 900;
+
+      color: var(--gold2);
+      letter-spacing: 0.5px;
+    }
+
+    .popup-subtitle {
+      margin-top: 5px;
+
+      color: #999;
+
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .popup-items {
+      display: grid;
+      gap: 10px;
+    }
+
+    .popup-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      padding: 13px;
+
+      border-radius: 14px;
+
+      background: rgba(255,255,255,0.025);
+
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .popup-icon {
+      width: 38px;
+      height: 38px;
+
+      flex-shrink: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 11px;
+
+      background: rgba(214,168,79,0.09);
+
+      border: 1px solid rgba(214,168,79,0.17);
+
+      font-size: 17px;
+    }
+
+    .popup-text strong {
+      display: block;
+
+      color: #fff;
+
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .popup-text span {
+      display: block;
+
+      color: #8f8f8f;
+
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .telegram-btn {
+      width: 100%;
+
+      margin-top: 14px;
+
+      padding: 13px;
+
+      border-radius: 13px;
+
+      border: 1px solid rgba(214,168,79,0.35);
+
+      background: rgba(214,168,79,0.07);
+
+      color: var(--gold2);
+
+      font-size: 13px;
+      font-weight: 800;
+
+      cursor: pointer;
+    }
+
+    .start-btn {
+      width: 100%;
+
+      margin-top: 10px;
+
+      padding: 15px;
+
+      border: 0;
+      border-radius: 14px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #f3cf72,
+          #c89535
+        );
+
+      color: #090909;
+
+      font-size: 14px;
+      font-weight: 900;
+
+      cursor: pointer;
+
+      box-shadow:
+        0 8px 25px rgba(214,168,79,0.18);
+    }
+
+    .popup-note {
+      margin-top: 11px;
+
+      text-align: center;
+
+      color: #5f5f5f;
+
+      font-size: 9px;
+      line-height: 1.4;
+    }
+
+    /* =========================
+       MOBILE
+    ========================= */
+
+    @media (max-width: 700px) {
+
+      .header {
+        padding: 12px 14px;
+      }
+
+      .brand-logo {
+        width: 39px;
+        height: 39px;
+      }
+
+      .brand-title {
+        font-size: 16px;
+      }
+
+      .brand-subtitle {
+        font-size: 8px;
+      }
+
+      .logout-btn {
+        padding: 9px 12px;
+        font-size: 12px;
+      }
+
+      .container {
+        padding: 20px 13px 40px;
+      }
+
+      .welcome {
+        padding: 23px 20px;
+        border-radius: 20px;
+      }
+
+      .welcome h1 {
+        font-size: 24px;
+      }
+
+      .balance-card {
+        padding: 22px 20px;
+      }
+
+      .balance-value {
+        font-size: 32px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+        gap: 11px;
+      }
+
+      .action-btn {
+        padding: 15px;
+      }
+
+      .popup {
+        max-width: 390px;
+        padding: 24px 17px 18px;
+        border-radius: 21px;
+      }
+
+      .popup-title {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <!-- =====================================================
+       LOADING
+  ===================================================== -->
+
+  <div class="loading" id="loading">
+
+    <div class="loading-box">
+
+      <div class="loading-logo">
+        TW
+      </div>
+
+      <div>
+        Loading Dashboard...
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- =====================================================
+       DASHBOARD
+  ===================================================== -->
+
+  <div class="dashboard" id="dashboard">
+
+
+    <!-- HEADER -->
+
+    <header class="header">
+
+      <div class="brand">
+
+        <img
+          src="assets/Logo.png"
+          class="brand-logo"
+          alt="TRUE WALK Logo"
+          onerror="this.style.display='none';"
+        >
+
+        <div>
+
+          <div class="brand-title">
+            TRUE WALK
+          </div>
+
+          <div class="brand-subtitle">
+            PREMIUM DASHBOARD
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <button
+        class="logout-btn"
+        id="logoutBtn">
+
+        Logout
+
+      </button>
+
+    </header>
+
+
+
+    <!-- MAIN -->
+
+    <main class="container">
+
+
+      <!-- WELCOME -->
+
+      <section class="welcome">
+
+        <div class="welcome-tag">
+          MEMBER DASHBOARD
+        </div>
+
+        <h1>
+          Welcome,
+          <span id="userName">User</span> 👋
+        </h1>
+
+        <p>
+          Mobile:
+          <span
+            class="phone-value"
+            id="userPhone">
+            Loading...
+          </span>
+        </p>
+
+      </section>
+
+
+
+      <!-- BALANCE -->
+
+      <section class="balance-card">
+
+        <div class="balance-label">
+          Available Balance
+        </div>
+
+        <div
+          class="balance-value"
+          id="availableBalance">
+
+          ₹0.00
+
+        </div>
+
+        <div class="balance-note">
+          Current wallet balance
+        </div>
+
+      </section>
+
+
+
+      <!-- STATS -->
+
+      <div class="stats">
+
+        <div class="stat-card">
+
+          <div class="stat-top">
+
+            <div class="stat-title">
+              Total Deposit
+            </div>
+
+            <div class="stat-icon">
+              ↓
+            </div>
+
+          </div>
+
+          <div
+            class="stat-value"
+            id="totalDeposit">
+
+            ₹0.00
+
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-top">
+
+            <div class="stat-title">
+              Total Withdrawal
+            </div>
+
+            <div class="stat-icon">
+              ↑
+            </div>
+
+          </div>
+
+          <div
+            class="stat-value"
+            id="totalWithdrawal">
+
+            ₹0.00
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ERROR -->
+
+      <div
+        class="error-message"
+        id="errorMessage">
+      </div>
+
+
+
+      <!-- ACTIONS -->
+
+      <div class="section-title">
+
+        <h2>
+          Quick Access
+        </h2>
+
+        <span>
+          TRUE WALK
+        </span>
+
+      </div>
+
+
+
+      <div class="actions">
+
+
+        <a
+          href="plans.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            📋
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Plans
+            </div>
+
+            <small>
+              View available plans
+            </small>
+
+          </div>
+
+        </a>
+
+
+        <a
+          href="deposit.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            💳
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Deposit
+            </div>
+
+            <small>
+              Add funds securely
+            </small>
+
+          </div>
+
+        </a>
+
+
+        <a
+          href="withdraw.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            💰
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Withdraw
+            </div>
+
+            <small>
+              Manage withdrawal
+            </small>
+
+          </div>
+
+        </a>
+
+
+        <a
+          href="refer.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            🔗
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Referral
+            </div>
+
+            <small>
+              Your referral activity
+            </small>
+
+          </div>
+
+        </a>
+
+
+        <a
+          href="orders.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            📦
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Orders
+            </div>
+
+            <small>
+              View your orders
+            </small>
+
+          </div>
+
+        </a>
+
+
+        <a
+          href="profile.html"
+          class="action-btn">
+
+          <div class="action-icon">
+            👤
+          </div>
+
+          <div class="action-text">
+
+            <div>
+              Profile
+            </div>
+
+            <small>
+              Account settings
+            </small>
+
+          </div>
+
+        </a>
+
+      </div>
+
+
+
+      <div class="footer">
+        TRUE WALK • MEMBER DASHBOARD
+      </div>
+
+    </main>
+
+  </div>
+
+
+
+  <!-- =====================================================
+       WELCOME POPUP
+  ===================================================== -->
+
+  <div
+    class="popup-overlay"
+    id="welcomePopup"
+    style="display:none;">
+
+    <div class="popup">
+
+
+      <div class="popup-brand">
+
+        <div class="popup-logo">
+          TW
+        </div>
+
+        <h2 class="popup-title">
+          TRUOBOG Invest
+        </h2>
+
+        <div class="popup-subtitle">
+          INVESTMENT PLATFORM
+        </div>
+
+      </div>
+
+
+
+      <div class="popup-items">
+
+
+        <!-- MIN WITHDRAWAL -->
+
+        <div class="popup-item">
+
+          <div class="popup-icon">
+            ₹
+          </div>
+
+          <div class="popup-text">
+
+            <strong>
+              Min. Withdrawal
+            </strong>
+
+            <span>
+              ₹120.00 minimum*
+            </span>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- WITHDRAWAL TIME -->
+
+        <div class="popup-item">
+
+          <div class="popup-icon">
+            ⏱
+          </div>
+
+          <div class="popup-text">
+
+            <strong>
+              Withdrawal Time
+            </strong>
+
+            <span>
+              Processed within 24 hours*
+            </span>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- DAILY INCOME -->
+
+        <div class="popup-item">
+
+          <div class="popup-icon">
+            📈
+          </div>
+
+          <div class="popup-text">
+
+            <strong>
+              Daily Income
+            </strong>
+
+            <span>
+              Daily earning information
+            </span>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- WITHDRAWAL FEE -->
+
+        <div class="popup-item">
+
+          <div class="popup-icon">
+            %
+          </div>
+
+          <div class="popup-text">
+
+            <strong>
+              Withdrawal Fee
+            </strong>
+
+            <span>
+              10% maintenance fee*
+            </span>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- SECURITY -->
+
+        <div class="popup-item">
+
+          <div class="popup-icon">
+            🔒
+          </div>
+
+          <div class="popup-text">
+
+            <strong>
+              Safe & Secure
+            </strong>
+
+            <span>
+              Secure platform experience
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- TELEGRAM -->
+
+      <button
+        type="button"
+        class="telegram-btn"
+        id="telegramBtn">
+
+        Join Our Telegram
+
+      </button>
+
+
+
+      <!-- START -->
+
+      <button
+        type="button"
+        class="start-btn"
+        id="startBtn">
+
+        Got It, Let's Start!
+
+      </button>
+
+
+
+      <div class="popup-note">
+
+        *Withdrawal limits, processing times and fees
+        are subject to the actual platform rules.
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+
+
+  <!-- =====================================================
+       JAVASCRIPT
+  ===================================================== -->
+
+  <script>
+
+
+    /* =========================
+       FORMAT MONEY
+    ========================= */
+
+    function formatMoney(amount) {
+
+      const number =
+        Number(amount || 0);
+
+      return "₹" +
+        number.toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+
+    }
+
+
+
+    /* =========================
+       SHOW ERROR
+    ========================= */
+
+    function showError(message) {
+
+      const errorBox =
+        document.getElementById(
+          "errorMessage"
+        );
+
+      errorBox.textContent =
+        message;
+
+      errorBox.style.display =
+        "block";
+
+    }
+
+
+
+    /* =========================
+       SHOW WELCOME POPUP
+    ========================= */
+
+    function showWelcomePopup() {
+
+      const popup =
+        document.getElementById(
+          "welcomePopup"
+        );
+
+      popup.style.display =
+        "flex";
+
+      document.body.style.overflow =
+        "hidden";
+
+    }
+
+
+
+    /* =========================
+       CLOSE WELCOME POPUP
+    ========================= */
+
+    function closeWelcomePopup() {
+
+      const popup =
+        document.getElementById(
+          "welcomePopup"
+        );
+
+      popup.style.display =
+        "none";
+
+      document.body.style.overflow =
+        "";
+
+    }
+
+
+
+    /* =========================
+       LOAD DASHBOARD
+    ========================= */
+
+    async function checkLogin() {
+
+      try {
+
+        const response =
+          await fetch("/api/me", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store"
+          });
+
+
+        /* LOGIN CHECK */
+
+        if (!response.ok) {
+
+          window.location.href =
+            "login.html";
+
+          return;
+
+        }
+
+
+        const data =
+          await response.json();
+
+
+        console.log(
+          "Dashboard API:",
+          data
+        );
+
+
+        /* USER DETAILS */
+
+        if (data.user) {
+
+          document.getElementById(
+            "userName"
+          ).textContent =
+            data.user.name || "User";
+
+
+          document.getElementById(
+            "userPhone"
+          ).textContent =
+            data.user.phone || "";
+
+        }
+
+
+        /* BALANCE */
+
+        const balance =
+          Number(data.balance || 0);
+
+
+        document.getElementById(
+          "availableBalance"
+        ).textContent =
+          formatMoney(balance);
+
+
+
+        /* WALLET */
+
+        try {
+
+          const walletResponse =
+            await fetch("/api/wallet", {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store"
+            });
+
+
+          if (walletResponse.ok) {
+
+            const walletData =
+              await walletResponse.json();
+
+
+            console.log(
+              "Wallet API:",
+              walletData
+            );
+
+
+            /* BALANCE */
+
+            if (
+              walletData.success &&
+              walletData.balance !== undefined
+            ) {
+
+              document.getElementById(
+                "availableBalance"
+              ).textContent =
+                formatMoney(
+                  walletData.balance
+                );
+
+            }
+
+
+            /* TRANSACTIONS */
+
+            if (
+              Array.isArray(
+                walletData.transactions
+              )
+            ) {
+
+              let totalDeposit = 0;
+              let totalWithdrawal = 0;
+
+
+              walletData.transactions.forEach(
+                function(transaction) {
+
+                  const amount =
+                    Number(
+                      transaction.amount || 0
+                    );
+
+
+                  if (
+                    transaction.type ===
+                    "deposit"
+                  ) {
+
+                    totalDeposit +=
+                      Math.abs(amount);
+
+                  }
+
+
+                  if (
+                    transaction.type ===
+                    "withdrawal"
+                  ) {
+
+                    totalWithdrawal +=
+                      Math.abs(amount);
+
+                  }
+
+                }
+              );
+
+
+              document.getElementById(
+                "totalDeposit"
+              ).textContent =
+                formatMoney(
+                  totalDeposit
+                );
+
+
+              document.getElementById(
+                "totalWithdrawal"
+              ).textContent =
+                formatMoney(
+                  totalWithdrawal
+                );
+
+            }
+
+          }
+
+        } catch (walletError) {
+
+          console.log(
+            "Wallet loading error:",
+            walletError
+          );
+
+        }
+
+
+
+        /* SHOW DASHBOARD */
+
+        document.getElementById(
+          "loading"
+        ).style.display =
+          "none";
+
+
+        document.getElementById(
+          "dashboard"
+        ).style.display =
+          "block";
+
+
+        /*
+          Popup login ke baad
+          dashboard load hone ke baad dikhega.
+        */
+
+        showWelcomePopup();
+
+
+      } catch (error) {
+
+        console.error(
+          "Dashboard error:",
+          error
+        );
+
+
+        showError(
+          "Unable to load dashboard."
+        );
+
+
+        setTimeout(
+          function() {
+
+            window.location.href =
+              "login.html";
+
+          },
+          1500
+        );
+
+      }
+
+    }
+
+
+
+    /* =========================
+       START BUTTON
+    ========================= */
+
+    document
+      .getElementById("startBtn")
+      .addEventListener(
+        "click",
+        function() {
+
+          closeWelcomePopup();
+
+        }
+      );
+
+
+
+    /* =========================
+       TELEGRAM BUTTON
+    ========================= */
+
+    document
+      .getElementById("telegramBtn")
+      .addEventListener(
+        "click",
+        function() {
+
+          /*
+            Yahan apna actual Telegram
+            channel/group URL baad mein
+            add kar sakte ho.
+          */
+
+          alert(
+            "Telegram link will be added here."
+          );
+
+        }
+      );
+
+
+
+    /* =========================
+       LOGOUT
+    ========================= */
+
+    document
+      .getElementById("logoutBtn")
+      .addEventListener(
+        "click",
+        async function() {
+
+          const button =
+            document.getElementById(
+              "logoutBtn"
+            );
+
+
+          button.disabled =
+            true;
+
+
+          button.textContent =
+            "Logging out...";
+
+
+          try {
+
+            await fetch(
+              "/api/logout",
+              {
+                method: "POST",
+                credentials: "include"
+              }
+            );
+
+          } catch (error) {
+
+            console.log(
+              "Logout error:",
+              error
+            );
+
+          }
+
+
+          window.location.href =
+            "login.html";
+
+        }
+      );
+
+
+
+    /* =========================
+       START
+    ========================= */
+
+    checkLogin();
+
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>TRUE WALK - Withdraw</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f5f7fb;
+      color: #111827;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #111827;
+      color: white;
+      padding: 18px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .topbar-inner {
+      max-width: 700px;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .back-btn {
+      text-decoration: none;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 700px;
+      margin: auto;
+      padding: 20px 15px 50px;
+    }
+
+    .balance-card {
+      background: linear-gradient(
+        135deg,
+        #111827,
+        #1f2937
+      );
+      color: white;
+      border-radius: 20px;
+      padding: 24px 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.16);
+    }
+
+    .balance-label {
+      font-size: 13px;
+      opacity: 0.75;
+      margin-bottom: 8px;
+    }
+
+    .balance {
+      font-size: 32px;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 5px 22px rgba(0, 0, 0, 0.06);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .field {
+      margin-bottom: 15px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 7px;
+      color: #374151;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 0 14px;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+      color: #111827;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #111827;
+      box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+    }
+
+    .hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    .method-box {
+      display: none;
+    }
+
+    .method-box.active {
+      display: block;
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 13px;
+      background: #111827;
+      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: #000;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .message {
+      display: none;
+      margin-bottom: 15px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      font-weight: 600;
+    }
+
+    .message.success {
+      display: block;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+
+    .message.error {
+      display: block;
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
+    .history-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+
+    .history-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .history-amount {
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .status {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .status.pending {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .status.processing {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .status.completed {
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .status.rejected,
+    .status.failed {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .history-details {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.7;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 25px 10px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    @media (max-width: 480px) {
+      .page {
+        padding: 15px 12px 40px;
+      }
+
+      .balance {
+        font-size: 28px;
+      }
+
+      .card {
+        padding: 17px;
+        border-radius: 17px;
+      }
+
+      .topbar {
+        padding: 16px 15px;
+      }
+
+      .title {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="home.html" class="back-btn">← Back</a>
+      <div class="title">Withdraw</div>
+      <div style="width: 40px;"></div>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- BALANCE -->
+    <section class="balance-card">
+      <div class="balance-label">
+        Available Balance
+      </div>
+
+      <div class="balance" id="balanceAmount">
+        ₹0.00
+      </div>
+    </section>
+
+    <!-- WITHDRAW FORM -->
+    <section class="card">
+
+      <div class="card-title">
+        Withdraw Funds
+      </div>
+
+      <div id="message" class="message"></div>
+
+      <form id="withdrawForm">
+
+        <!-- AMOUNT -->
+        <div class="field">
+          <label for="amount">
+            Withdrawal Amount
+          </label>
+
+          <input
+            type="number"
+            id="amount"
+            name="amount"
+            min="1"
+            step="0.01"
+            placeholder="Enter amount"
+            required
+          />
+
+          <div class="hint">
+            Enter an amount within your available wallet balance.
+          </div>
+        </div>
+
+        <!-- METHOD -->
+        <div class="field">
+          <label for="method">
+            Withdrawal Method
+          </label>
+
+          <select
+            id="method"
+            name="method"
+            required
+          >
+            <option value="">
+              Select method
+            </option>
+
+            <option value="UPI">
+              UPI
+            </option>
+
+            <option value="BANK">
+              Bank Account
+            </option>
+          </select>
+        </div>
+
+        <!-- UPI -->
+        <div
+          id="upiBox"
+          class="method-box"
+        >
+
+          <div class="field">
+            <label for="upi">
+              UPI ID
+            </label>
+
+            <input
+              type="text"
+              id="upi"
+              placeholder="example@upi"
+              autocomplete="off"
+            />
+
+            <div class="hint">
+              Example: yourname@upi
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BANK -->
+        <div
+          id="bankBox"
+          class="method-box"
+        >
+
+          <div class="field">
+            <label for="holderName">
+              Account Holder Name
+            </label>
+
+            <input
+              type="text"
+              id="holderName"
+              placeholder="Enter account holder name"
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="field">
+            <label for="accountNumber">
+              Bank Account Number
+            </label>
+
+            <input
+              type="text"
+              id="accountNumber"
+              inputmode="numeric"
+              maxlength="18"
+              placeholder="Enter bank account number"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field">
+            <label for="confirmAccount">
+              Confirm Bank Account Number
+            </label>
+
+            <input
+              type="text"
+              id="confirmAccount"
+              inputmode="numeric"
+              maxlength="18"
+              placeholder="Re-enter bank account number"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field">
+            <label for="ifsc">
+              IFSC Code
+            </label>
+
+            <input
+              type="text"
+              id="ifsc"
+              maxlength="11"
+              placeholder="Example: SBIN0001234"
+              autocomplete="off"
+              style="text-transform: uppercase;"
+            />
+          </div>
+
+        </div>
+
+        <button
+          type="submit"
+          id="submitBtn"
+          class="submit-btn"
+        >
+          Submit Withdrawal
+        </button>
+
+      </form>
+
+    </section>
+
+    <!-- HISTORY -->
+    <section class="card">
+
+      <div class="card-title">
+        Withdrawal History
+      </div>
+
+      <div id="history">
+        <div class="empty">
+          Loading withdrawal history...
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+
+    let currentBalance = 0;
+
+    /* =========================
+       HELPERS
+    ========================= */
+
+    function formatMoney(value) {
+      const number = Number(value || 0);
+
+      return "₹" + number.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function showMessage(text, type) {
+      const message =
+        document.getElementById("message");
+
+      message.textContent = text;
+
+      message.className =
+        "message " + type;
+    }
+
+    function clearMessage() {
+      const message =
+        document.getElementById("message");
+
+      message.textContent = "";
+
+      message.className = "message";
+    }
+
+    /* =========================
+       LOAD USER BALANCE
+    ========================= */
+
+    async function loadBalance() {
+      try {
+
+        const response = await fetch(
+          "/api/me",
+          {
+            method: "GET",
+            credentials: "include"
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Unable to load balance."
+          );
+        }
+
+        currentBalance =
+          Number(data.balance || 0);
+
+        document.getElementById(
+          "balanceAmount"
+        ).textContent =
+          formatMoney(currentBalance);
+
+      } catch (error) {
+
+        console.error(
+          "BALANCE ERROR:",
+          error
+        );
+
+        showMessage(
+          error.message ||
+          "Unable to load balance.",
+          "error"
+        );
+      }
+    }
+
+    /* =========================
+       METHOD CHANGE
+    ========================= */
+
+    const method =
+      document.getElementById("method");
+
+    const upiBox =
+      document.getElementById("upiBox");
+
+    const bankBox =
+      document.getElementById("bankBox");
+
+    method.addEventListener(
+      "change",
+      function () {
+
+        upiBox.classList.remove(
+          "active"
+        );
+
+        bankBox.classList.remove(
+          "active"
+        );
+
+        if (this.value === "UPI") {
+          upiBox.classList.add(
+            "active"
+          );
+        }
+
+        if (this.value === "BANK") {
+          bankBox.classList.add(
+            "active"
+          );
+        }
+
+        clearMessage();
+      }
+    );
+
+    /* =========================
+       IFSC UPPERCASE
+    ========================= */
+
+    document
+      .getElementById("ifsc")
+      .addEventListener(
+        "input",
+        function () {
+          this.value =
+            this.value
+              .toUpperCase()
+              .replace(/\s/g, "");
+        }
+      );
+
+    /* =========================
+       ACCOUNT NUMBER ONLY DIGITS
+    ========================= */
+
+    document
+      .getElementById("accountNumber")
+      .addEventListener(
+        "input",
+        function () {
+          this.value =
+            this.value.replace(
+              /\D/g,
+              ""
+            );
+        }
+      );
+
+    document
+      .getElementById("confirmAccount")
+      .addEventListener(
+        "input",
+        function () {
+          this.value =
+            this.value.replace(
+              /\D/g,
+              ""
+            );
+        }
+      );
+
+    /* =========================
+       WITHDRAW SUBMIT
+    ========================= */
+
+    document
+      .getElementById("withdrawForm")
+      .addEventListener(
+        "submit",
+        async function (event) {
+
+          event.preventDefault();
+
+          clearMessage();
+
+          const submitBtn =
+            document.getElementById(
+              "submitBtn"
+            );
+
+          const amountInput =
+            document.getElementById(
+              "amount"
+            );
+
+          const selectedMethod =
+            document.getElementById(
+              "method"
+            ).value;
+
+          const amount =
+            Number(
+              amountInput.value
+            );
+
+          /* AMOUNT CHECK */
+
+          if (
+            !Number.isFinite(amount) ||
+            amount <= 0
+          ) {
+            showMessage(
+              "Please enter a valid withdrawal amount.",
+              "error"
+            );
+
+            return;
+          }
+
+          if (
+            amount > currentBalance
+          ) {
+            showMessage(
+              "Insufficient wallet balance.",
+              "error"
+            );
+
+            return;
+          }
+
+          if (
+            !selectedMethod
+          ) {
+            showMessage(
+              "Please select UPI or Bank Account.",
+              "error"
+            );
+
+            return;
+          }
+
+          let requestBody = {
+            amount: amount,
+            method: selectedMethod
+          };
+
+          /* =========================
+             UPI
+          ========================= */
+
+          if (
+            selectedMethod === "UPI"
+          ) {
+
+            const upi =
+              document
+                .getElementById("upi")
+                .value
+                .trim();
+
+            if (!upi) {
+              showMessage(
+                "Please enter your UPI ID.",
+                "error"
+              );
+
+              return;
+            }
+
+            requestBody.upiId = upi;
+          }
+
+          /* =========================
+             BANK
+          ========================= */
+
+          if (
+            selectedMethod === "BANK"
+          ) {
+
+            const holderName =
+              document
+                .getElementById(
+                  "holderName"
+                )
+                .value
+                .trim();
+
+            const accountNumber =
+              document
+                .getElementById(
+                  "accountNumber"
+                )
+                .value
+                .trim();
+
+            const confirmAccountNumber =
+              document
+                .getElementById(
+                  "confirmAccount"
+                )
+                .value
+                .trim();
+
+            const ifsc =
+              document
+                .getElementById(
+                  "ifsc"
+                )
+                .value
+                .trim()
+                .toUpperCase();
+
+            if (!holderName) {
+              showMessage(
+                "Please enter account holder name.",
+                "error"
+              );
+
+              return;
+            }
+
+            if (!/^\d{9,18}$/.test(
+              accountNumber
+            )) {
+              showMessage(
+                "Please enter a valid bank account number.",
+                "error"
+              );
+
+              return;
+            }
+
+            if (
+              accountNumber !==
+              confirmAccountNumber
+            ) {
+              showMessage(
+                "Bank account numbers do not match.",
+                "error"
+              );
+
+              return;
+            }
+
+            if (
+              !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
+                ifsc
+              )
+            ) {
+              showMessage(
+                "Please enter a valid IFSC code.",
+                "error"
+              );
+
+              return;
+            }
+
+            /*
+              IMPORTANT:
+              These names MUST match sarver.js
+            */
+
+            requestBody.accountName =
+              holderName;
+
+            requestBody.accountNumber =
+              accountNumber;
+
+            requestBody.confirmAccountNumber =
+              confirmAccountNumber;
+
+            requestBody.ifsc =
+              ifsc;
+          }
+
+          /* =========================
+             SEND REQUEST
+          ========================= */
+
+          try {
+
+            submitBtn.disabled = true;
+
+            submitBtn.textContent =
+              "Submitting...";
+
+            document
+              .getElementById(
+                "withdrawForm"
+              )
+              .classList.add(
+                "loading"
+              );
+
+            const response =
+              await fetch(
+                "/api/withdrawals",
+                {
+                  method: "POST",
+
+                  credentials:
+                    "include",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body:
+                    JSON.stringify(
+                      requestBody
+                    )
+                }
+              );
+
+            const data =
+              await response.json();
+
+            if (!response.ok) {
+
+              /*
+                Backend sends `message`,
+                so show the actual reason.
+              */
+
+              throw new Error(
+                data.message ||
+                data.error ||
+                "Withdrawal request failed."
+              );
+            }
+
+            /* =========================
+               SUCCESS
+            ========================= */
+
+            currentBalance =
+              Number(
+                data.balance ??
+                currentBalance - amount
+              );
+
+            document.getElementById(
+              "balanceAmount"
+            ).textContent =
+              formatMoney(
+                currentBalance
+              );
+
+            showMessage(
+              data.message ||
+              "Withdrawal request submitted successfully.",
+              "success"
+            );
+
+            /*
+              Clear form after successful
+              withdrawal request.
+            */
+
+            document
+              .getElementById(
+                "withdrawForm"
+              )
+              .reset();
+
+            upiBox.classList.remove(
+              "active"
+            );
+
+            bankBox.classList.remove(
+              "active"
+            );
+
+            await loadHistory();
+
+            /*
+              Refresh balance from server
+              once more to ensure UI matches
+              database.
+            */
+
+            await loadBalance();
+
+          } catch (error) {
+
+            console.error(
+              "WITHDRAW ERROR:",
+              error
+            );
+
+            showMessage(
+              error.message ||
+              "Withdrawal request failed.",
+              "error"
+            );
+
+          } finally {
+
+            submitBtn.disabled =
+              false;
+
+            submitBtn.textContent =
+              "Submit Withdrawal";
+
+            document
+              .getElementById(
+                "withdrawForm"
+              )
+              .classList.remove(
+                "loading"
+              );
+          }
+        }
+      );
+
+    /* =========================
+       WITHDRAWAL HISTORY
+    ========================= */
+
+    async function loadHistory() {
+
+      const history =
+        document.getElementById(
+          "history"
+        );
+
+      try {
+
+        const response =
+          await fetch(
+            "/api/withdrawals",
+            {
+              method: "GET",
+              credentials: "include"
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Unable to load withdrawal history."
+          );
+        }
+
+        const withdrawals =
+          Array.isArray(
+            data.withdrawals
+          )
+            ? data.withdrawals
+            : [];
+
+        if (
+          withdrawals.length === 0
+        ) {
+
+          history.innerHTML = `
+            <div class="empty">
+              No withdrawal requests yet.
+            </div>
+          `;
+
+          return;
+        }
+
+        history.innerHTML =
+          withdrawals
+            .map(
+              (item) => {
+
+                const status =
+                  String(
+                    item.status ||
+                    "pending"
+                  ).toLowerCase();
+
+                const method =
+                  item.method ||
+                  "-";
+
+                const destination =
+                  item.destination ||
+                  "-";
+
+                const date =
+                  item.createdAt ||
+                  item.created_at ||
+                  item.date ||
+                  "-";
+
+                let extra = "";
+
+                if (
+                  item.accountName
+                ) {
+                  extra += `
+                    <div>
+                      Account Holder:
+                      ${escapeHtml(
+                        item.accountName
+                      )}
+                    </div>
+                  `;
+                }
+
+                if (
+                  item.ifsc
+                ) {
+                  extra += `
+                    <div>
+                      IFSC:
+                      ${escapeHtml(
+                        item.ifsc
+                      )}
+                    </div>
+                  `;
+                }
+
+                return `
+                  <div class="history-item">
+
+                    <div class="history-top">
+
+                      <div class="history-amount">
+                        ${formatMoney(
+                          item.amount
+                        )}
+                      </div>
+
+                      <div class="status ${status}">
+                        ${escapeHtml(
+                          status
+                        )}
+                      </div>
+
+                    </div>
+
+                    <div class="history-details">
+
+                      <div>
+                        Method:
+                        ${escapeHtml(
+                          method
+                        )}
+                      </div>
+
+                      <div>
+                        Destination:
+                        ${escapeHtml(
+                          destination
+                        )}
+                      </div>
+
+                      ${extra}
+
+                      <div>
+                        Date:
+                        ${escapeHtml(
+                          date
+                        )}
+                      </div>
+
+                      <div>
+                        Withdrawal ID:
+                        #${escapeHtml(
+                          item.id
+                        )}
+                      </div>
+
+                    </div>
+
+                  </div>
+                `;
+              }
+            )
+            .join("");
+
+      } catch (error) {
+
+        console.error(
+          "HISTORY ERROR:",
+          error
+        );
+
+        history.innerHTML = `
+          <div class="empty">
+            ${escapeHtml(
+              error.message ||
+              "Unable to load withdrawal history."
+            )}
+          </div>
+        `;
+      }
+    }
+
+    /* =========================
+       HTML ESCAPE
+    ========================= */
+
+    function escapeHtml(value) {
+
+      return String(
+        value ?? ""
+      )
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
+        );
+    }
+
+    /* =========================
+       PAGE LOAD
+    ========================= */
+
+    async function init() {
+
+      await loadBalance();
+
+      await loadHistory();
+
+    }
+
+    init();
+
+  </script>
+
+</body>
+</html>

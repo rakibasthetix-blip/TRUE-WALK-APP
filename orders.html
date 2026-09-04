@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - Orders</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #080b12;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 25px;
+    }
+
+    .back {
+      color: white;
+      text-decoration: none;
+      font-size: 28px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 45px 20px;
+      background: #111722;
+      border: 1px solid #252d3b;
+      border-radius: 18px;
+      color: #9da7b6;
+    }
+
+    .order {
+      background: #111722;
+      border: 1px solid #252d3b;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 15px;
+    }
+
+    .order-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .order-title {
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .status {
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      background: #173b2a;
+      color: #55e58c;
+    }
+
+    .pending {
+      background: #3d3218;
+      color: #ffc857;
+    }
+
+    .failed {
+      background: #401d22;
+      color: #ff7373;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 9px 0;
+      border-bottom: 1px solid #202734;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #8994a5;
+      font-size: 13px;
+    }
+
+    .value {
+      color: #fff;
+      font-size: 13px;
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .amount {
+      font-size: 21px;
+      font-weight: bold;
+    }
+
+    .loading {
+      text-align: center;
+      color: #9da7b6;
+      padding: 40px;
+    }
+
+    .error {
+      background: #321a1e;
+      border: 1px solid #633037;
+      color: #ff8080;
+      padding: 15px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .refresh {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 18px;
+      background: #00d4ff;
+      color: #001018;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <a href="home.html" class="back">‹</a>
+      <h1>Orders</h1>
+    </div>
+
+    <button class="refresh" onclick="loadOrders()">
+      Refresh Orders
+    </button>
+
+    <div id="ordersContainer">
+      <div class="loading">
+        Loading orders...
+      </div>
+    </div>
+
+  </div>
+
+
+<script>
+
+async function loadOrders() {
+
+  const container =
+    document.getElementById("ordersContainer");
+
+  container.innerHTML = `
+    <div class="loading">
+      Loading orders...
+    </div>
+  `;
+
+  try {
+
+    const response = await fetch(
+      "/api/orders",
+      {
+        credentials: "include"
+      }
+    );
+
+    if (response.status === 401) {
+      window.location.href = "login.html";
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Unable to load orders."
+      );
+    }
+
+    /*
+      Backend अलग-अलग format में data
+      भेज सकता है, इसलिए दोनों handle होंगे.
+    */
+
+    const orders =
+      Array.isArray(data)
+        ? data
+        : (
+            data.orders ||
+            data.payments ||
+            []
+          );
+
+    if (orders.length === 0) {
+
+      container.innerHTML = `
+        <div class="empty">
+          <div style="font-size:40px;margin-bottom:12px;">
+            📋
+          </div>
+
+          <div style="
+            color:white;
+            font-size:18px;
+            font-weight:bold;
+            margin-bottom:8px;
+          ">
+            No Orders Yet
+          </div>
+
+          <div>
+            Your payment history will appear here.
+          </div>
+        </div>
+      `;
+
+      return;
+    }
+
+
+    container.innerHTML = "";
+
+
+    orders.forEach(order => {
+
+      const item =
+        document.createElement("div");
+
+      item.className = "order";
+
+
+      const rawStatus =
+        String(
+          order.status ||
+          order.payment_status ||
+          "pending"
+        ).toLowerCase();
+
+
+      let statusClass = "";
+
+      if (
+        rawStatus.includes("pending")
+      ) {
+        statusClass = "pending";
+      }
+
+      if (
+        rawStatus.includes("fail")
+      ) {
+        statusClass = "failed";
+      }
+
+
+      const statusText =
+        order.status ||
+        order.payment_status ||
+        "Pending";
+
+
+      const amount =
+        Number(
+          order.amount ||
+          order.amount_inr ||
+          0
+        );
+
+
+      const dateValue =
+        order.created_at ||
+        order.createdAt ||
+        order.date;
+
+
+      let dateText = "-";
+
+      if (dateValue) {
+
+        const date =
+          new Date(dateValue);
+
+        if (!isNaN(date.getTime())) {
+
+          dateText =
+            date.toLocaleString(
+              "en-IN",
+              {
+                dateStyle: "medium",
+                timeStyle: "short"
+              }
+            );
+
+        } else {
+
+          dateText =
+            String(dateValue);
+
+        }
+
+      }
+
+
+      const orderId =
+        order.order_id ||
+        order.razorpay_order_id ||
+        order.orderId ||
+        "-";
+
+
+      const paymentId =
+        order.payment_id ||
+        order.razorpay_payment_id ||
+        order.paymentId ||
+        "-";
+
+
+      const plan =
+        order.plan ||
+        "Deposit";
+
+
+      item.innerHTML = `
+
+        <div class="order-top">
+
+          <div class="order-title">
+            ${escapeHtml(plan)}
+          </div>
+
+          <div class="status ${statusClass}">
+            ${escapeHtml(statusText)}
+          </div>
+
+        </div>
+
+
+        <div class="row">
+
+          <div class="label">
+            Amount
+          </div>
+
+          <div class="value amount">
+            ₹${amount.toLocaleString("en-IN")}
+          </div>
+
+        </div>
+
+
+        <div class="row">
+
+          <div class="label">
+            Order ID
+          </div>
+
+          <div class="value">
+            ${escapeHtml(orderId)}
+          </div>
+
+        </div>
+
+
+        <div class="row">
+
+          <div class="label">
+            Payment ID
+          </div>
+
+          <div class="value">
+            ${escapeHtml(paymentId)}
+          </div>
+
+        </div>
+
+
+        <div class="row">
+
+          <div class="label">
+            Date
+          </div>
+
+          <div class="value">
+            ${escapeHtml(dateText)}
+          </div>
+
+        </div>
+
+      `;
+
+
+      container.appendChild(item);
+
+    });
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    container.innerHTML = `
+      <div class="error">
+        ${escapeHtml(
+          error.message ||
+          "Unable to load orders."
+        )}
+      </div>
+    `;
+
+  }
+
+}
+
+
+/* =========================
+   SECURITY HELPER
+========================= */
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================
+   LOAD ORDERS
+========================= */
+
+loadOrders();
+
+</script>
+
+</body>
+</html>

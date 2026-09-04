@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - Admin Login</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #080808;
+      padding: 20px;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 400px;
+      background: #151515;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 30px 24px;
+      box-shadow: 0 15px 40px rgba(0,0,0,.5);
+    }
+
+    .logo {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 15px;
+      border-radius: 50%;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      font-size: 25px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    label {
+      display: block;
+      color: #ddd;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #444;
+      background: #0d0d0d;
+      color: white;
+      outline: none;
+      margin-bottom: 18px;
+      font-size: 15px;
+    }
+
+    input:focus {
+      border-color: #777;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: white;
+      color: black;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    .security {
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+      margin-top: 22px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-box">
+
+    <div class="logo">🔐</div>
+
+    <h1>TRUE WALK</h1>
+
+    <div class="subtitle">
+      Admin Panel Login
+    </div>
+
+    <form id="adminLoginForm">
+
+      <label for="username">
+        Admin Username
+      </label>
+
+      <input
+        type="text"
+        id="username"
+        name="username"
+        placeholder="Enter admin username"
+        autocomplete="username"
+        required
+      >
+
+      <label for="password">
+        Admin Password
+      </label>
+
+      <input
+        type="password"
+        id="password"
+        name="password"
+        placeholder="Enter admin password"
+        autocomplete="current-password"
+        required
+      >
+
+      <button type="submit" id="loginBtn">
+        LOGIN
+      </button>
+
+    </form>
+
+    <div id="message"></div>
+
+    <div class="security">
+      Authorized admin access only
+    </div>
+
+  </div>
+
+  <script>
+    const form = document.getElementById("adminLoginForm");
+    const button = document.getElementById("loginBtn");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      message.textContent = "";
+      button.disabled = true;
+      button.textContent = "Logging in...";
+
+      const username =
+        document.getElementById("username").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+      try {
+        const response = await fetch("/api/admin/login", {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            username,
+            password
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Admin login failed."
+          );
+        }
+
+        message.style.color = "#7CFF7C";
+        message.textContent = "Login successful.";
+
+        setTimeout(() => {
+          window.location.href = "/admin-dashboard.html";
+        }, 500);
+
+      } catch (error) {
+        message.style.color = "#ff6b6b";
+        message.textContent = error.message;
+      }
+
+      button.disabled = false;
+      button.textContent = "LOGIN";
+    });
+  </script>
+
+</body>
+</html>

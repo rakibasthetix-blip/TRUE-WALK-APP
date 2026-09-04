@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRUE WALK - Register</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+    }
+
+    .register-page {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .register-box {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      padding: 30px 24px;
+      border-radius: 22px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      box-sizing: border-box;
+    }
+
+    .logo-area {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .logo-area img {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      border-radius: 18px;
+    }
+
+    .logo-area h1 {
+      margin: 12px 0 5px;
+      font-size: 27px;
+      color: #111;
+    }
+
+    .logo-area p {
+      margin: 0;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 17px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      height: 52px;
+      padding: 0 15px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      outline: none;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      border-color: #ff7a00;
+    }
+
+    .register-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 12px;
+      background: #ff7a00;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .register-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .message {
+      display: none;
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .message.error {
+      display: block;
+      background: #ffecec;
+      color: #c62828;
+    }
+
+    .message.success {
+      display: block;
+      background: #eaf8ed;
+      color: #218838;
+    }
+
+    .login-text {
+      text-align: center;
+      margin-top: 25px;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .login-text a {
+      color: #ff7a00;
+      font-weight: 700;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="register-page">
+
+  <div class="register-box">
+
+    <div class="logo-area">
+      <img src="assets/logo.png" alt="TRUE WALK Logo">
+      <h1>TRUE WALK</h1>
+      <p>Create your account</p>
+    </div>
+
+    <form id="registerForm">
+
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input
+          type="text"
+          id="name"
+          placeholder="Enter your full name"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Mobile Number</label>
+        <input
+          type="tel"
+          id="phone"
+          placeholder="Enter 10-digit mobile number"
+          maxlength="10"
+          inputmode="numeric"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="Minimum 6 characters"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          placeholder="Confirm your password"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="referralCode">Referral Code (Optional)</label>
+        <input
+          type="text"
+          id="referralCode"
+          placeholder="Enter referral code"
+          maxlength="30"
+        >
+      </div>
+
+      <button
+        type="submit"
+        class="register-btn"
+        id="registerBtn"
+      >
+        REGISTER
+      </button>
+
+      <div id="message" class="message"></div>
+
+    </form>
+
+    <div class="login-text">
+      Already have an account?
+      <a href="login.html">Login</a>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const referralInput = document.getElementById("referralCode");
+
+// URL से referral code automatically लेना
+const urlParams = new URLSearchParams(window.location.search);
+const referralFromUrl = urlParams.get("ref");
+
+if (referralFromUrl) {
+  referralInput.value = referralFromUrl.toUpperCase();
+}
+
+const registerForm = document.getElementById("registerForm");
+const registerBtn = document.getElementById("registerBtn");
+const message = document.getElementById("message");
+
+registerForm.addEventListener("submit", async function(e) {
+
+  e.preventDefault();
+
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const password = document.getElementById("password").value;
+  const confirmPassword =
+    document.getElementById("confirmPassword").value;
+
+  const referralCode =
+    referralInput.value.trim().toUpperCase();
+
+  message.className = "message";
+  message.textContent = "";
+
+  if (name.length < 2) {
+    message.textContent = "Please enter your full name.";
+    message.className = "message error";
+    return;
+  }
+
+  if (!/^[0-9]{10}$/.test(phone)) {
+    message.textContent =
+      "Please enter a valid 10-digit mobile number.";
+    message.className = "message error";
+    return;
+  }
+
+  if (password.length < 6) {
+    message.textContent =
+      "Password must be at least 6 characters.";
+    message.className = "message error";
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    message.textContent =
+      "Passwords do not match.";
+    message.className = "message error";
+    return;
+  }
+
+  registerBtn.disabled = true;
+  registerBtn.textContent = "REGISTERING...";
+
+  try {
+
+    const response = await fetch("/api/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        name: name,
+        phone: phone,
+        password: password,
+        referralCode: referralCode || null
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Registration failed."
+      );
+    }
+
+    message.textContent =
+      "Registration successful! Your referral code is " +
+      data.referralCode;
+
+    message.className = "message success";
+
+    setTimeout(function() {
+      window.location.href = "login.html";
+    }, 1500);
+
+  } catch (error) {
+
+    message.textContent =
+      error.message ||
+      "Unable to connect to server.";
+
+    message.className = "message error";
+
+  } finally {
+
+    registerBtn.disabled = false;
+    registerBtn.textContent = "REGISTER";
+
+  }
+
+});
+
+</script>
+
+</body>
+</html>

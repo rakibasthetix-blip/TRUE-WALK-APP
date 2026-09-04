@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRUE WALK - Login</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 22px;
+      padding: 30px 24px;
+      box-sizing: border-box;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    .logo-area {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .logo-area img {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      border-radius: 18px;
+    }
+
+    .logo-area h1 {
+      margin: 12px 0 5px;
+      font-size: 27px;
+      color: #111;
+    }
+
+    .logo-area p {
+      margin: 0;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 17px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      height: 52px;
+      padding: 0 15px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      outline: none;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      border-color: #ff7a00;
+    }
+
+    .login-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 12px;
+      background: #ff7a00;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+
+    .login-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .message {
+      display: none;
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .error {
+      display: block;
+      background: #ffecec;
+      color: #c62828;
+    }
+
+    .success {
+      display: block;
+      background: #eaf8ed;
+      color: #218838;
+    }
+
+    .register-text {
+      text-align: center;
+      margin-top: 25px;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .register-text a {
+      color: #ff7a00;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .back-home {
+      display: block;
+      text-align: center;
+      margin-top: 18px;
+      color: #555;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+
+    /* =========================
+       WELCOME POPUP
+    ========================= */
+
+    .welcome-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 99999;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    .welcome-overlay.show {
+      display: flex;
+    }
+
+    .welcome-popup {
+      width: 100%;
+      max-width: 410px;
+      background: #111;
+      color: #fff;
+      border-radius: 22px;
+      padding: 25px 20px 20px;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 122, 0, 0.4);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      animation: popupShow 0.3s ease;
+    }
+
+    @keyframes popupShow {
+      from {
+        opacity: 0;
+        transform: scale(0.94) translateY(15px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .popup-header {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .popup-icon {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff7a00, #ffad32);
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    .popup-header h2 {
+      margin: 0;
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .popup-header p {
+      margin: 6px 0 0;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .popup-info {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      margin-bottom: 16px;
+    }
+
+    .popup-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      background: #1c1c1c;
+      border: 1px solid #292929;
+      border-radius: 12px;
+      padding: 10px 11px;
+    }
+
+    .popup-item-icon {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      border-radius: 9px;
+      background: rgba(255, 122, 0, 0.13);
+      color: #ff9a32;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .popup-item-text {
+      flex: 1;
+    }
+
+    .popup-item-title {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 3px;
+    }
+
+    .popup-item-value {
+      font-size: 13px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .telegram-btn {
+      width: 100%;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #229ed9;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 11px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .start-btn {
+      width: 100%;
+      height: 51px;
+      border: none;
+      border-radius: 11px;
+      background: linear-gradient(135deg, #ff7a00, #ffad32);
+      color: #111;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .popup-note {
+      text-align: center;
+      color: #777;
+      font-size: 10px;
+      line-height: 1.4;
+      margin-top: 11px;
+    }
+
+    @media (max-width: 480px) {
+      .welcome-overlay {
+        padding: 12px;
+      }
+
+      .welcome-popup {
+        padding: 22px 15px 17px;
+      }
+
+      .popup-header h2 {
+        font-size: 22px;
+      }
+
+      .popup-item {
+        padding: 9px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-page">
+
+    <div class="login-box">
+
+      <div class="logo-area">
+        <img src="assets/logo.png" alt="TRUE WALK Logo">
+
+        <h1>TRUE WALK</h1>
+        <p>Welcome back! Login to your account</p>
+      </div>
+
+      <form id="loginForm">
+
+        <div class="form-group">
+          <label for="phone">Mobile Number</label>
+
+          <input
+            type="tel"
+            id="phone"
+            placeholder="Enter 10-digit mobile number"
+            maxlength="10"
+            inputmode="numeric"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+
+          <input
+            type="password"
+            id="password"
+            placeholder="Enter your password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="login-btn" id="loginBtn">
+          LOGIN
+        </button>
+
+        <div id="message" class="message"></div>
+
+      </form>
+
+      <div class="register-text">
+        Don't have an account?
+        <a href="register.html">Register</a>
+      </div>
+
+      <a href="index.html" class="back-home">
+        ← Back to Home
+      </a>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       WELCOME POPUP
+  ========================= -->
+
+  <div class="welcome-overlay" id="welcomeOverlay">
+
+    <div class="welcome-popup">
+
+      <div class="popup-header">
+
+        <div class="popup-icon">
+          ✓
+        </div>
+
+        <h2>Tuborg Invest</h2>
+
+        <p>Investment Platform</p>
+
+      </div>
+
+
+      <div class="popup-info">
+
+        <div class="popup-item">
+          <div class="popup-item-icon">₹</div>
+
+          <div class="popup-item-text">
+            <div class="popup-item-title">
+              Min. Withdrawal
+            </div>
+
+            <div class="popup-item-value">
+              ₹120.00 minimum
+            </div>
+          </div>
+        </div>
+
+
+        <div class="popup-item">
+          <div class="popup-item-icon">⏱</div>
+
+          <div class="popup-item-text">
+            <div class="popup-item-title">
+              Withdrawal Time
+            </div>
+
+            <div class="popup-item-value">
+              Processed within 24 hours
+            </div>
+          </div>
+        </div>
+
+
+        <div class="popup-item">
+          <div class="popup-item-icon">%</div>
+
+          <div class="popup-item-text">
+            <div class="popup-item-title">
+              Daily Income
+            </div>
+
+            <div class="popup-item-value">
+              Earn &amp; withdraw every day
+            </div>
+          </div>
+        </div>
+
+
+        <div class="popup-item">
+          <div class="popup-item-icon">%</div>
+
+          <div class="popup-item-text">
+            <div class="popup-item-title">
+              Withdrawal Tax
+            </div>
+
+            <div class="popup-item-value">
+              10% maintenance fee
+            </div>
+          </div>
+        </div>
+
+
+        <div class="popup-item">
+          <div class="popup-item-icon">✓</div>
+
+          <div class="popup-item-text">
+            <div class="popup-item-title">
+              Safe &amp; Secure
+            </div>
+
+            <div class="popup-item-value">
+              100% protected platform
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- TELEGRAM -->
+
+      <a
+        href="https://t.me/officialApllication"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="telegram-btn"
+      >
+        ✈️ Join Our Telegram
+      </a>
+
+
+      <!-- GOT IT -->
+
+      <button
+        type="button"
+        class="start-btn"
+        id="startBtn"
+      >
+        Got It, Let's Start!
+      </button>
+
+
+      <div class="popup-note">
+        Please review the applicable platform terms and conditions before using financial features.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const loginBtn = document.getElementById("loginBtn");
+    const message = document.getElementById("message");
+
+    const welcomeOverlay =
+      document.getElementById("welcomeOverlay");
+
+    const startBtn =
+      document.getElementById("startBtn");
+
+
+    /* =========================
+       SHOW POPUP
+    ========================= */
+
+    function showWelcomePopup() {
+      welcomeOverlay.classList.add("show");
+
+      document.body.style.overflow = "hidden";
+    }
+
+
+    /* =========================
+       GOT IT → HOME
+    ========================= */
+
+    startBtn.addEventListener("click", function() {
+
+      welcomeOverlay.classList.remove("show");
+
+      document.body.style.overflow = "";
+
+      window.location.href = "home.html";
+
+    });
+
+
+    /* =========================
+       LOGIN
+    ========================= */
+
+    loginForm.addEventListener("submit", async function(e) {
+
+      e.preventDefault();
+
+      const phone =
+        document.getElementById("phone").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+
+      message.className = "message";
+      message.textContent = "";
+
+
+      /* PHONE VALIDATION */
+
+      if (!/^[0-9]{10}$/.test(phone)) {
+
+        message.textContent =
+          "Please enter a valid 10-digit mobile number.";
+
+        message.className =
+          "message error";
+
+        return;
+      }
+
+
+      /* PASSWORD VALIDATION */
+
+      if (password.length === 0) {
+
+        message.textContent =
+          "Please enter your password.";
+
+        message.className =
+          "message error";
+
+        return;
+      }
+
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "LOGIN...";
+
+
+      try {
+
+        const response = await fetch("/api/login", {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          credentials: "include",
+
+          body: JSON.stringify({
+            phone: phone,
+            password: password
+          })
+
+        });
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.message ||
+            "Invalid mobile number or password."
+          );
+
+        }
+
+
+        /* LOGIN SUCCESS */
+
+        message.textContent =
+          "Login successful!";
+
+        message.className =
+          "message success";
+
+
+        /*
+         * OLD CODE:
+         *
+         * setTimeout(function() {
+         *   window.location.href = "home.html";
+         * }, 700);
+         *
+         * REMOVED.
+         *
+         * Now popup will appear first.
+         */
+
+        setTimeout(function() {
+
+          showWelcomePopup();
+
+        }, 300);
+
+
+      } catch (error) {
+
+        message.textContent =
+          error.message ||
+          "Unable to connect to the server.";
+
+        message.className =
+          "message error";
+
+      } finally {
+
+        /*
+         * Keep button disabled while popup
+         * is waiting for the user.
+         */
+
+        if (!welcomeOverlay.classList.contains("show")) {
+
+          loginBtn.disabled = false;
+          loginBtn.textContent = "LOGIN";
+
+        }
+
+      }
+
+    });
+  </script>
+
+</body>
+</html>

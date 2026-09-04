@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TRUE WALK - VIP Plans</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold: #f6c542;
+      --gold2: #ffe58a;
+      --bg: #030405;
+      --card: #090b0f;
+      --text: #ffffff;
+      --muted: #9da4af;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+
+      background:
+        radial-gradient(
+          circle at 50% -10%,
+          rgba(246,197,66,.20),
+          transparent 32%
+        ),
+        radial-gradient(
+          circle at 0% 50%,
+          rgba(255,190,0,.06),
+          transparent 30%
+        ),
+        #030405;
+    }
+
+    .topbar {
+      width: min(1250px, calc(100% - 24px));
+      margin: 15px auto;
+      min-height: 72px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 10px 16px;
+
+      border: 1px solid rgba(246,197,66,.25);
+      border-radius: 18px;
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(17,19,23,.96),
+          rgba(5,6,8,.96)
+        );
+
+      box-shadow: 0 15px 45px rgba(0,0,0,.45);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .logo-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+
+      display: grid;
+      place-items: center;
+
+      border: 2px solid var(--gold);
+      color: var(--gold);
+
+      font-weight: 900;
+
+      box-shadow: 0 0 18px rgba(246,197,66,.18);
+    }
+
+    .brand-text {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .brand-text span {
+      color: var(--gold);
+    }
+
+    .home-btn {
+      color: var(--gold2);
+      text-decoration: none;
+
+      border: 1px solid rgba(246,197,66,.35);
+
+      padding: 10px 17px;
+      border-radius: 999px;
+
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .container {
+      width: min(1250px, calc(100% - 24px));
+      margin: auto;
+      padding-bottom: 35px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+
+      min-height: 245px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 25px;
+      padding: 28px;
+
+      border: 1px solid rgba(246,197,66,.30);
+      border-radius: 24px;
+
+      background:
+        radial-gradient(
+          circle at 80% 50%,
+          rgba(246,197,66,.15),
+          transparent 35%
+        ),
+        linear-gradient(
+          135deg,
+          #0b0d11,
+          #050608
+        );
+
+      margin-bottom: 28px;
+
+      box-shadow: 0 25px 70px rgba(0,0,0,.45);
+    }
+
+    .hero-content {
+      max-width: 600px;
+    }
+
+    .crown {
+      font-size: 32px;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 62px);
+      line-height: 1;
+      margin-bottom: 13px;
+    }
+
+    .hero h1 span {
+      color: var(--gold);
+    }
+
+    .hero p {
+      color: #b6bcc5;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .hero-badge {
+      flex-shrink: 0;
+      min-width: 280px;
+
+      padding: 20px;
+
+      border: 1px solid rgba(246,197,66,.60);
+      border-radius: 17px;
+
+      background: rgba(10,11,13,.75);
+
+      text-align: center;
+    }
+
+    .hero-badge .icon {
+      font-size: 34px;
+      margin-bottom: 7px;
+    }
+
+    .hero-badge strong {
+      display: block;
+      color: var(--gold);
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    .hero-badge small {
+      color: #aeb4be;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 17px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(27px, 5vw, 38px);
+    }
+
+    .section-head h2 span {
+      color: var(--gold);
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 17px;
+    }
+
+    .plan-card {
+      position: relative;
+      overflow: hidden;
+
+      border-radius: 22px;
+      padding: 11px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,.035),
+          rgba(255,255,255,.005)
+        ),
+        #090b0f;
+
+      border: 1px solid var(--accent);
+
+      box-shadow: 0 15px 45px rgba(0,0,0,.35);
+
+      transition: .25s;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-7px);
+
+      box-shadow:
+        0 25px 65px rgba(0,0,0,.60),
+        0 0 25px var(--glow);
+    }
+
+    .plan-card::before {
+      content: "";
+
+      position: absolute;
+
+      width: 190px;
+      height: 190px;
+
+      right: -75px;
+      top: -80px;
+
+      border-radius: 50%;
+
+      background: var(--glow);
+
+      filter: blur(75px);
+      opacity: .32;
+
+      pointer-events: none;
+    }
+
+    .image-wrap {
+      position: relative;
+
+      height: 235px;
+      overflow: hidden;
+
+      border-radius: 16px;
+      margin-bottom: 14px;
+
+      background:
+        radial-gradient(
+          circle at 50% 55%,
+          var(--glow),
+          transparent 55%
+        ),
+        #050607;
+
+      border: 1px solid var(--accent);
+    }
+
+    .image-wrap::after {
+      content: "";
+
+      position: absolute;
+      inset: 0;
+
+      background:
+        linear-gradient(
+          180deg,
+          transparent 45%,
+          rgba(0,0,0,.55)
+        );
+
+      pointer-events: none;
+    }
+
+    .plan-image {
+      width: 100%;
+      height: 100%;
+
+      display: block;
+
+      object-fit: contain;
+      padding: 10px;
+
+      filter:
+        drop-shadow(0 12px 22px rgba(0,0,0,.65));
+
+      transition: transform .3s;
+    }
+
+    .plan-card:hover .plan-image {
+      transform: scale(1.06);
+    }
+
+    .vip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin-bottom: 9px;
+    }
+
+    .vip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      padding: 6px 11px;
+
+      border-radius: 8px;
+
+      color: var(--accent);
+      border: 1px solid var(--accent);
+
+      background: rgba(255,255,255,.025);
+
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .star {
+      color: var(--accent);
+    }
+
+    .plan-name {
+      color: #e5e8ed;
+      font-size: 13px;
+    }
+
+    .price {
+      color: var(--accent);
+
+      font-size: 32px;
+      font-weight: 900;
+
+      margin-bottom: 13px;
+    }
+
+    .details {
+      border-top: 1px solid rgba(255,255,255,.07);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+
+      padding: 9px 0;
+      margin-bottom: 13px;
+    }
+
+    .detail {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      gap: 10px;
+
+      margin: 8px 0;
+
+      font-size: 12px;
+    }
+
+    .detail span {
+      color: #8f97a3;
+    }
+
+    .detail strong {
+      color: #e8ebef;
+      text-align: right;
+    }
+
+    .return-value {
+      color: var(--accent) !important;
+      font-weight: 900;
+    }
+
+    .available {
+      color: #42e58a !important;
+    }
+
+    .select-btn {
+      width: 100%;
+
+      padding: 14px;
+
+      border-radius: 12px;
+
+      border: 1px solid var(--accent);
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.04),
+          rgba(255,255,255,.01)
+        );
+
+      color: var(--accent);
+
+      font-size: 14px;
+      font-weight: 900;
+
+      cursor: pointer;
+
+      transition: .2s;
+    }
+
+    .select-btn:hover {
+      background: var(--accent);
+      color: #050505;
+
+      box-shadow: 0 0 22px var(--glow);
+    }
+
+    .select-btn:active {
+      transform: scale(.98);
+    }
+
+    .trust {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+
+      gap: 1px;
+
+      margin-top: 25px;
+
+      overflow: hidden;
+
+      border: 1px solid rgba(246,197,66,.20);
+      border-radius: 18px;
+
+      background: rgba(246,197,66,.12);
+    }
+
+    .trust-item {
+      padding: 17px;
+      background: #080a0d;
+      text-align: center;
+    }
+
+    .trust-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .trust-item strong {
+      display: block;
+
+      color: var(--gold);
+
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .trust-item span {
+      color: #8f97a3;
+      font-size: 11px;
+    }
+
+    .footer {
+      text-align: center;
+
+      color: #737b87;
+
+      font-size: 11px;
+      line-height: 1.6;
+
+      margin-top: 20px;
+    }
+
+    /* CARD COLOURS */
+
+    .vip1 {
+      --accent: #8cff3f;
+      --glow: rgba(75,255,20,.35);
+    }
+
+    .vip2 {
+      --accent: #36bfff;
+      --glow: rgba(20,150,255,.35);
+    }
+
+    .vip3 {
+      --accent: #ffc83d;
+      --glow: rgba(255,190,20,.38);
+    }
+
+    .vip4 {
+      --accent: #ff4b38;
+      --glow: rgba(255,40,20,.34);
+    }
+
+    .vip5 {
+      --accent: #d05cff;
+      --glow: rgba(190,40,255,.34);
+    }
+
+    .vip6 {
+      --accent: #ffb51b;
+      --glow: rgba(255,170,0,.38);
+    }
+
+    @media (max-width: 900px) {
+
+      .plans {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .hero {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .hero-badge {
+        width: 100%;
+      }
+
+      .trust {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 580px) {
+
+      .topbar {
+        margin: 8px auto;
+        padding: 9px 11px;
+        border-radius: 15px;
+      }
+
+      .logo-circle {
+        width: 39px;
+        height: 39px;
+        font-size: 12px;
+      }
+
+      .brand-text {
+        font-size: 17px;
+      }
+
+      .home-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .container {
+        width: min(100% - 16px, 520px);
+      }
+
+      .hero {
+        padding: 21px;
+        border-radius: 19px;
+      }
+
+      .hero h1 {
+        font-size: 39px;
+      }
+
+      .hero-badge {
+        min-width: 0;
+      }
+
+      .plans {
+        grid-template-columns: 1fr;
+      }
+
+      .image-wrap {
+        height: 255px;
+      }
+
+      .trust {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .trust-item {
+        padding: 13px 7px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="brand">
+    <div class="logo-circle">TW</div>
+
+    <div class="brand-text">
+      TRUE <span>WALK</span>
+    </div>
+  </div>
+
+  <a href="home.html" class="home-btn">
+    ← Home
+  </a>
+
+</header>
+
+
+<main class="container">
+
+  <section class="hero">
+
+    <div class="hero-content">
+
+      <div class="crown">♛</div>
+
+      <h1>
+        VIP <span>PLANS</span>
+      </h1>
+
+      <p>
+        Choose the plan that fits your TRUE WALK experience.
+        Review the deposit and displayed return details before continuing.
+      </p>
+
+    </div>
+
+    <div class="hero-badge">
+
+      <div class="icon">🎁</div>
+
+      <strong>
+        Premium Plans
+      </strong>
+
+      <small>
+        Select a plan to continue
+      </small>
+
+    </div>
+
+  </section>
+
+
+  <div class="section-head">
+
+    <div>
+
+      <h2>
+        Choose <span>Your Plan</span>
+      </h2>
+
+      <p>
+        Review plan values and continue to the authorised payment flow.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <section class="plans">
+
+
+    <!-- VIP 1 -->
+
+    <article class="plan-card vip1">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 1"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 1 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Starter
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹900
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹900</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>2 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹4,000</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹8,000</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/5</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 1', 900)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+    <!-- VIP 2 -->
+
+    <article class="plan-card vip2">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 2"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 2 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Basic
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹295
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹295</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>45 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹240</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹10,800</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/10</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 2', 295)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+    <!-- VIP 3 -->
+
+    <article class="plan-card vip3">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 3"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 3 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Plus
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹550
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹550</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>10 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹1,400</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹14,000</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/10</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 3', 550)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+    <!-- VIP 4 -->
+
+    <article class="plan-card vip4">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 4"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 4 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Premium
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹1,100
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹1,100</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>7 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹4,000</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹28,000</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/10</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 4', 1100)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+    <!-- VIP 5 -->
+
+    <article class="plan-card vip5">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 5"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 5 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Pro
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹2,500
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹2,500</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>5 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹7,450</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹37,250</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/5</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 5', 2500)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+    <!-- VIP 6 -->
+
+    <article class="plan-card vip6">
+
+      <div class="image-wrap">
+
+        <img
+          class="plan-image"
+          src="assets/Logo.png"
+          alt="TRUE WALK VIP 6"
+        >
+
+      </div>
+
+      <div class="vip-row">
+
+        <span class="vip">
+          VIP 6 <span class="star">★</span>
+        </span>
+
+        <span class="plan-name">
+          Elite
+        </span>
+
+      </div>
+
+      <div class="price">
+        ₹4,999
+      </div>
+
+      <div class="details">
+
+        <div class="detail">
+          <span>Deposit</span>
+          <strong>₹4,999</strong>
+        </div>
+
+        <div class="detail">
+          <span>Return Time</span>
+          <strong>2 Days</strong>
+        </div>
+
+        <div class="detail">
+          <span>Daily Return</span>
+          <strong class="return-value">₹29,999</strong>
+        </div>
+
+        <div class="detail">
+          <span>Total Return</span>
+          <strong class="return-value">₹59,998</strong>
+        </div>
+
+        <div class="detail">
+          <span>Limit</span>
+          <strong>0/1</strong>
+        </div>
+
+        <div class="detail">
+          <span>Status</span>
+          <strong class="available">● Available</strong>
+        </div>
+
+      </div>
+
+      <button
+        class="select-btn"
+        onclick="selectPlan('VIP 6', 4999)"
+      >
+        Select Plan&nbsp; →
+      </button>
+
+    </article>
+
+
+  </section>
+
+
+  <section class="trust">
+
+    <div class="trust-item">
+      <div class="trust-icon">🛡️</div>
+      <strong>Protected Flow</strong>
+      <span>Authorised application flow</span>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">🔒</div>
+      <strong>Secure Payment</strong>
+      <span>Use the authorised payment page</span>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">⚡</div>
+      <strong>Fast Processing</strong>
+      <span>Status updates from the system</span>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">🎧</div>
+      <strong>Support</strong>
+      <span>Help whenever you need it</span>
+    </div>
+
+  </section>
+
+
+  <footer class="footer">
+
+    Plan information shown here is for display within the application.
+    Actual payment, eligibility and account processing are subject to
+    the application's authorised rules.
+
+  </footer>
+
+</main>
+
+
+<script>
+
+  function selectPlan(planName, amount) {
+
+    const params = new URLSearchParams();
+
+    params.set("plan", planName);
+    params.set("amount", amount);
+
+    window.location.href =
+      "deposit.html?" + params.toString();
+
+  }
+
+</script>
+
+</body>
+</html>
