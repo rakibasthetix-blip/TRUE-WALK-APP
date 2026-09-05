@@ -2103,10 +2103,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
-  console.log(
-    razorpay
-      ? 'Razorpay configuration detected.'
-      : 'Razorpay keys are not configured yet.'
-  );
-});
