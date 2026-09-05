@@ -2088,10 +2088,21 @@ app.get('/', (req, res) => {
 // START SERVER
 // ======================================================
 
-app.listen(PORT, () => {
-  console.log(
-    `TRUE WALK server running at http://localhost:${PORT}`
-  );
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(
+      `TRUE WALK server running at http://localhost:${PORT}`
+    );
+
+    console.log(
+      razorpay
+        ? 'Razorpay configuration detected.'
+        : 'Razorpay keys are not configured yet.'
+    );
+  });
+}
+
+module.exports = app;
 
   console.log(
     razorpay
