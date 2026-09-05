@@ -145,7 +145,6 @@
       font-size: 14px;
     }
 
-
     /* =========================
        WELCOME POPUP
     ========================= */
@@ -386,7 +385,6 @@
 
   </div>
 
-
   <!-- =========================
        WELCOME POPUP
   ========================= -->
@@ -407,7 +405,6 @@
 
       </div>
 
-
       <div class="popup-info">
 
         <div class="popup-item">
@@ -424,7 +421,6 @@
           </div>
         </div>
 
-
         <div class="popup-item">
           <div class="popup-item-icon">⏱</div>
 
@@ -438,7 +434,6 @@
             </div>
           </div>
         </div>
-
 
         <div class="popup-item">
           <div class="popup-item-icon">%</div>
@@ -454,7 +449,6 @@
           </div>
         </div>
 
-
         <div class="popup-item">
           <div class="popup-item-icon">%</div>
 
@@ -468,7 +462,6 @@
             </div>
           </div>
         </div>
-
 
         <div class="popup-item">
           <div class="popup-item-icon">✓</div>
@@ -486,9 +479,6 @@
 
       </div>
 
-
-      <!-- TELEGRAM -->
-
       <a
         href="https://t.me/officialApllication"
         target="_blank"
@@ -498,9 +488,6 @@
         ✈️ Join Our Telegram
       </a>
 
-
-      <!-- GOT IT -->
-
       <button
         type="button"
         class="start-btn"
@@ -509,7 +496,6 @@
         Got It, Let's Start!
       </button>
 
-
       <div class="popup-note">
         Please review the applicable platform terms and conditions before using financial features.
       </div>
@@ -517,7 +503,6 @@
     </div>
 
   </div>
-
 
   <script>
     const loginForm = document.getElementById("loginForm");
@@ -530,7 +515,6 @@
     const startBtn =
       document.getElementById("startBtn");
 
-
     /* =========================
        SHOW POPUP
     ========================= */
@@ -540,7 +524,6 @@
 
       document.body.style.overflow = "hidden";
     }
-
 
     /* =========================
        GOT IT → HOME
@@ -556,7 +539,6 @@
 
     });
 
-
     /* =========================
        LOGIN
     ========================= */
@@ -571,10 +553,8 @@
       const password =
         document.getElementById("password").value;
 
-
       message.className = "message";
       message.textContent = "";
-
 
       /* PHONE VALIDATION */
 
@@ -589,7 +569,6 @@
         return;
       }
 
-
       /* PASSWORD VALIDATION */
 
       if (password.length === 0) {
@@ -603,10 +582,8 @@
         return;
       }
 
-
       loginBtn.disabled = true;
       loginBtn.textContent = "LOGIN...";
-
 
       try {
 
@@ -627,9 +604,53 @@
 
         });
 
+        /*
+         * IMPORTANT FIX:
+         * Read response as TEXT first.
+         * This prevents "Unexpected token T"
+         * when the server/proxy sends non-JSON.
+         */
 
-        const data = await response.json();
+        const contentType =
+          response.headers.get("content-type") || "";
 
+        const rawResponse =
+          await response.text();
+
+        let data = {};
+
+        if (contentType.includes("application/json")) {
+
+          try {
+
+            data = JSON.parse(rawResponse);
+
+          } catch (parseError) {
+
+            console.error(
+              "Invalid JSON response:",
+              rawResponse
+            );
+
+            throw new Error(
+              "Server returned an invalid response."
+            );
+
+          }
+
+        } else {
+
+          console.error(
+            "Non-JSON server response:",
+            rawResponse
+          );
+
+          throw new Error(
+            rawResponse ||
+            "Server returned an unexpected response."
+          );
+
+        }
 
         if (!response.ok) {
 
@@ -640,7 +661,6 @@
 
         }
 
-
         /* LOGIN SUCCESS */
 
         message.textContent =
@@ -649,17 +669,8 @@
         message.className =
           "message success";
 
-
         /*
-         * OLD CODE:
-         *
-         * setTimeout(function() {
-         *   window.location.href = "home.html";
-         * }, 700);
-         *
-         * REMOVED.
-         *
-         * Now popup will appear first.
+         * Popup appears before home page.
          */
 
         setTimeout(function() {
@@ -668,8 +679,12 @@
 
         }, 300);
 
-
       } catch (error) {
+
+        console.error(
+          "Login error:",
+          error
+        );
 
         message.textContent =
           error.message ||
@@ -685,7 +700,9 @@
          * is waiting for the user.
          */
 
-        if (!welcomeOverlay.classList.contains("show")) {
+        if (
+          !welcomeOverlay.classList.contains("show")
+        ) {
 
           loginBtn.disabled = false;
           loginBtn.textContent = "LOGIN";
