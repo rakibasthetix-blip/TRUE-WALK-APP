@@ -1056,8 +1056,8 @@ $("walletForm").addEventListener("submit", async function(event) {
 
   event.preventDefault();
 
-  const userId =
-    Number($("walletUserId").value);
+const userId = $("walletUserId").value.trim();
+
 
   const type =
     $("adjustmentType").value;
