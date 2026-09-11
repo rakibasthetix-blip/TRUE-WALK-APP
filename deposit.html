@@ -531,22 +531,18 @@
   // =====================================================
 
   function createPayment() {
+  const plan = planNameFromUrl;
 
-    hideError();
+  if (!plan) {
+    showError('Invalid payment plan.');
+    return;
+  }
 
-    if (
-      !planNameFromUrl ||
-      !Number.isFinite(amountFromUrl) ||
-      amountFromUrl < 200
-    ) {
+  setLoading(true);
 
-      showError(
-        "Invalid payment amount."
-      );
-
-      return;
-
-    }
+  window.location.href =
+    `/api/payment/go?plan=${encodeURIComponent(plan)}`;
+}
 
     setLoading(true);
 
