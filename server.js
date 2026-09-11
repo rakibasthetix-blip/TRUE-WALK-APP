@@ -646,28 +646,80 @@ app.post(
     try {
 
       const username =
-        String(
-          req.body.username || ''
-        ).trim();
+        String(req.body.username || '').trim();
 
       const password =
-        String(
-          req.body.password || ''
-        );
+        String(req.body.password || '');
 
-
-      if (
-        !ADMIN_USERNAME ||
-        !ADMIN_PASSWORD
-      ) {
+      if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 
         return res.status(500).json({
           success: false,
-          message:
-            'Admin credentials are not configured.'
+          message: 'Admin credentials are not configured.'
         });
 
       }
+
+      if (
+        username !== ADMIN_USERNAME ||
+        password !== ADMIN_PASSWORD
+      ) {
+
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid admin credentials.'
+        });
+
+      }
+
+      // Clear normal user session state
+      req.session.userId = null;
+
+      // Set admin session
+      req.session.isAdmin = true;
+
+      // Explicitly save session before responding.
+      // This prevents redirect/dashboard race conditions
+      // with MongoStore.
+      req.session.save((error) => {
+
+        if (error) {
+
+          console.error(
+            'Admin session save error:',
+            error
+          );
+
+          return res.status(500).json({
+            success: false,
+            message: 'Unable to save admin session.'
+          });
+
+        }
+
+        return res.json({
+          success: true,
+          message: 'Admin login successful.'
+        });
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Admin login error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: 'Admin login failed.'
+      });
+
+    }
+
+  }
+);
 
 
       if (
