@@ -6,23 +6,20 @@
 
   <title>TRUE WALK - Secure Payment</title>
 
-  <!-- Razorpay Checkout -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     body {
-      font-family: Arial, Helvetica, sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(22,163,74,0.12), transparent 35%),
-        radial-gradient(circle at bottom right, rgba(34,197,94,0.08), transparent 35%),
+        radial-gradient(circle at top left, rgba(22,163,74,.12), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(34,197,94,.08), transparent 35%),
         #07110b;
-      color: #ffffff;
+      color: #fff;
       min-height: 100vh;
     }
 
@@ -34,7 +31,6 @@
       padding: 18px;
     }
 
-    /* HEADER */
     .header {
       display: flex;
       align-items: center;
@@ -44,17 +40,12 @@
 
     .back-btn {
       text-decoration: none;
-      color: #ffffff;
+      color: #fff;
       background: #102018;
       border: 1px solid #1d3b29;
       padding: 10px 14px;
       border-radius: 12px;
       font-size: 14px;
-      transition: 0.2s;
-    }
-
-    .back-btn:hover {
-      background: #163021;
     }
 
     .brand {
@@ -73,16 +64,14 @@
     .brand-name {
       font-size: 17px;
       font-weight: 800;
-      letter-spacing: 0.5px;
     }
 
-    /* MAIN CARD */
     .payment-card {
-      background: rgba(11, 26, 17, 0.96);
+      background: rgba(11,26,17,.96);
       border: 1px solid #1d3b29;
       border-radius: 24px;
       padding: 24px;
-      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+      box-shadow: 0 18px 50px rgba(0,0,0,.35);
     }
 
     .page-title {
@@ -98,9 +87,24 @@
       margin-bottom: 24px;
     }
 
-    /* PLAN BOX */
+    .error-box {
+      display: none;
+      margin-bottom: 18px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      background: #351313;
+      border: 1px solid #743030;
+      color: #ffb4b4;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .error-box.show {
+      display: block;
+    }
+
     .plan-box {
-      background: linear-gradient(135deg, #10291a, #0c1d13);
+      background: linear-gradient(135deg,#10291a,#0c1d13);
       border: 1px solid #235b36;
       border-radius: 18px;
       padding: 18px;
@@ -140,7 +144,6 @@
       color: #4ade80;
     }
 
-    /* PAYMENT METHOD */
     .section-title {
       font-size: 15px;
       font-weight: 800;
@@ -199,41 +202,25 @@
       color: #041108;
       font-size: 13px;
       font-weight: 900;
-      flex-shrink: 0;
     }
 
-    /* PAY BUTTON */
     .pay-btn {
       width: 100%;
       border: none;
-      outline: none;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #ffffff;
+      background: linear-gradient(135deg,#22c55e,#16a34a);
+      color: #fff;
       font-size: 16px;
       font-weight: 900;
       padding: 17px;
       border-radius: 16px;
       cursor: pointer;
-      box-shadow: 0 10px 25px rgba(22,163,74,0.25);
-      transition: 0.2s;
-    }
-
-    .pay-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 14px 30px rgba(22,163,74,0.32);
-    }
-
-    .pay-btn:active {
-      transform: translateY(0);
     }
 
     .pay-btn:disabled {
-      opacity: 0.65;
+      opacity: .65;
       cursor: not-allowed;
-      transform: none;
     }
 
-    /* SECURITY */
     .security-box {
       margin-top: 18px;
       padding: 14px;
@@ -250,103 +237,16 @@
       color: #d7e6dc;
     }
 
-    /* ERROR */
-    .error-box {
-      display: none;
-      margin-bottom: 18px;
-      padding: 13px 14px;
-      border-radius: 13px;
-      background: #351313;
-      border: 1px solid #743030;
-      color: #ffb4b4;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .error-box.show {
-      display: block;
-    }
-
-    /* SUCCESS POPUP */
-    .success-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.78);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      z-index: 9999;
-    }
-
-    .success-overlay.show {
-      display: flex;
-    }
-
-    .success-popup {
-      width: 100%;
-      max-width: 390px;
-      background: #0c1b12;
-      border: 1px solid #2d7042;
-      border-radius: 24px;
-      padding: 28px 22px;
-      text-align: center;
-      box-shadow: 0 25px 70px rgba(0,0,0,0.5);
-    }
-
-    .success-icon {
-      width: 70px;
-      height: 70px;
-      margin: 0 auto 17px;
-      border-radius: 50%;
-      background: #173b24;
-      color: #4ade80;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 35px;
-      font-weight: 900;
-    }
-
-    .success-popup h2 {
-      font-size: 23px;
-      margin-bottom: 8px;
-    }
-
-    .success-popup p {
-      color: #91a497;
-      font-size: 13px;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    .success-btn {
-      width: 100%;
-      border: none;
-      background: #22c55e;
-      color: #051009;
-      padding: 14px;
-      border-radius: 14px;
-      font-size: 15px;
-      font-weight: 900;
-      cursor: pointer;
-    }
-
-    /* LOADING */
-    .loading {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-    }
-
     .spinner {
+      display: inline-block;
       width: 17px;
       height: 17px;
-      border: 2px solid rgba(255,255,255,0.35);
-      border-top-color: #ffffff;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
     }
 
     @keyframes spin {
@@ -355,21 +255,16 @@
       }
     }
 
-    @media (max-width: 430px) {
+    @media(max-width:430px) {
       .page {
         padding: 14px;
       }
 
       .payment-card {
         padding: 20px;
-        border-radius: 21px;
       }
 
       .page-title {
-        font-size: 23px;
-      }
-
-      .amount {
         font-size: 23px;
       }
     }
@@ -378,305 +273,281 @@
 
 <body>
 
-  <div class="page">
+<div class="page">
 
-    <!-- HEADER -->
-    <div class="header">
+  <div class="header">
 
-      <a href="plans.html" class="back-btn">
-        ← Back
-      </a>
+    <a href="plans.html" class="back-btn">
+      ← Back
+    </a>
 
-      <div class="brand">
-        <img
-          src="assets/Logo.png"
-          alt="TRUE WALK"
-          onerror="this.style.display='none'"
-        >
-        <div class="brand-name">TRUE WALK</div>
-      </div>
-
-    </div>
-
-
-    <!-- PAYMENT CARD -->
-    <div class="payment-card">
-
-      <h1 class="page-title">
-        Complete Your Deposit
-      </h1>
-
-      <p class="page-subtitle">
-        Review your selected plan and continue securely using UPI.
-      </p>
-
-
-      <!-- ERROR -->
-      <div class="error-box" id="errorBox"></div>
-
-
-      <!-- SELECTED PLAN -->
-      <div class="plan-box">
-
-        <div class="plan-label">
-          Selected Plan
-        </div>
-
-        <div class="plan-name" id="planName">
-          Loading...
-        </div>
-
-        <div class="amount-row">
-
-          <div class="amount-label">
-            Deposit Amount
-          </div>
-
-          <div class="amount" id="amount">
-            ₹0
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <!-- PAYMENT METHOD -->
-      <div class="section-title">
-        Payment Method
-      </div>
-
-      <div class="upi-option">
-
-        <div class="upi-icon">
-          ₹
-        </div>
-
-        <div class="upi-text">
-
-          <div class="upi-title">
-            UPI Payment
-          </div>
-
-          <div class="upi-desc">
-            Pay securely using your preferred UPI app.
-          </div>
-
-        </div>
-
-        <div class="selected">
-          ✓
-        </div>
-
-      </div>
-
-
-      <!-- PAY BUTTON -->
-      <button
-        type="button"
-        class="pay-btn"
-        id="payBtn"
+    <div class="brand">
+      <img
+        src="assets/Logo.png"
+        alt="TRUE WALK"
+        onerror="this.style.display='none'"
       >
-        Pay with UPI
-      </button>
-
-
-      <!-- SECURITY -->
-      <div class="security-box">
-        🔒 <strong>Secure Payment</strong><br>
-        Payment is processed through Razorpay's secure checkout.
-      </div>
-
+      <div class="brand-name">TRUE WALK</div>
     </div>
 
   </div>
 
 
-  <!-- SUCCESS POPUP -->
-  <div
-    class="success-overlay"
-    id="successOverlay"
-  >
+  <div class="payment-card">
 
-    <div class="success-popup">
+    <h1 class="page-title">
+      Complete Your Deposit
+    </h1>
 
-      <div class="success-icon">
+    <p class="page-subtitle">
+      Review your selected plan and continue securely using UPI.
+    </p>
+
+
+    <div id="errorBox" class="error-box"></div>
+
+
+    <div class="plan-box">
+
+      <div class="plan-label">
+        Selected Plan
+      </div>
+
+      <div class="plan-name" id="planName">
+        Loading...
+      </div>
+
+      <div class="amount-row">
+
+        <div class="amount-label">
+          Deposit Amount
+        </div>
+
+        <div class="amount" id="amount">
+          ₹0
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="section-title">
+      Payment Method
+    </div>
+
+
+    <div class="upi-option">
+
+      <div class="upi-icon">
+        ₹
+      </div>
+
+      <div class="upi-text">
+
+        <div class="upi-title">
+          UPI Payment
+        </div>
+
+        <div class="upi-desc">
+          Pay securely using your preferred UPI app.
+        </div>
+
+      </div>
+
+      <div class="selected">
         ✓
       </div>
 
-      <h2>
-        Payment Verified
-      </h2>
+    </div>
 
-      <p>
-        Your payment has been successfully verified.
-        Your account balance has been updated.
-      </p>
 
-      <button
-        type="button"
-        class="success-btn"
-        id="successBtn"
-      >
-        Continue to Dashboard
-      </button>
+    <button
+      type="button"
+      class="pay-btn"
+      id="payBtn"
+    >
+      Pay with UPI
+    </button>
 
+
+    <div class="security-box">
+      🔒 <strong>Secure Payment</strong><br>
+      Payment is processed through the configured payment gateway.
     </div>
 
   </div>
 
+</div>
 
-  <script>
 
-    /* ==========================================
-       READ PLAN FROM URL
-       Example:
-       deposit.html?plan=VIP%201&amount=900
-       ========================================== */
+<script>
 
-    const params = new URLSearchParams(
-      window.location.search
+  /* ================================
+     GET PLAN DETAILS
+     ================================ */
+
+  const params =
+    new URLSearchParams(window.location.search);
+
+  const planNameFromUrl =
+    params.get("plan") || "";
+
+  const amountFromUrl =
+    Number(params.get("amount") || 0);
+
+
+  const planNameElement =
+    document.getElementById("planName");
+
+  const amountElement =
+    document.getElementById("amount");
+
+  const payBtn =
+    document.getElementById("payBtn");
+
+  const errorBox =
+    document.getElementById("errorBox");
+
+
+  /* ================================
+     FORMAT INR
+     ================================ */
+
+  function formatAmount(value) {
+
+    return new Intl.NumberFormat(
+      "en-IN",
+      {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2
+      }
+    ).format(value);
+
+  }
+
+
+  /* ================================
+     ERROR
+     ================================ */
+
+  function showError(message) {
+
+    errorBox.textContent = message;
+
+    errorBox.classList.add("show");
+
+  }
+
+
+  function hideError() {
+
+    errorBox.textContent = "";
+
+    errorBox.classList.remove("show");
+
+  }
+
+
+  /* ================================
+     VALIDATE PLAN
+     ================================ */
+
+  if (
+    !planNameFromUrl ||
+    !Number.isFinite(amountFromUrl) ||
+    amountFromUrl < 200
+  ) {
+
+    planNameElement.textContent =
+      "Invalid Plan";
+
+    amountElement.textContent =
+      "₹0";
+
+    payBtn.disabled = true;
+
+    showError(
+      "Invalid plan or amount. Please go back and select a valid plan."
     );
 
-    const planNameFromUrl =
-      params.get("plan") || "";
+  } else {
 
-    const amountFromUrl =
-      Number(params.get("amount") || 0);
+    planNameElement.textContent =
+      planNameFromUrl;
 
+    amountElement.textContent =
+      formatAmount(amountFromUrl);
 
-    const planName =
-      document.getElementById("planName");
-
-    const amount =
-      document.getElementById("amount");
-
-    const payBtn =
-      document.getElementById("payBtn");
-
-    const errorBox =
-      document.getElementById("errorBox");
-
-    const successOverlay =
-      document.getElementById("successOverlay");
-
-    const successBtn =
-      document.getElementById("successBtn");
+  }
 
 
-    /* ==========================================
-       FORMAT AMOUNT
-       ========================================== */
+  /* ================================
+     LOADING
+     ================================ */
 
-    function formatAmount(value) {
+  function setLoading(loading) {
 
-      return new Intl.NumberFormat(
-        "en-IN",
-        {
-          style: "currency",
-          currency: "INR",
-          maximumFractionDigits: 2
-        }
-      ).format(value);
+    if (loading) {
+
+      payBtn.disabled = true;
+
+      payBtn.innerHTML =
+        '<span class="spinner"></span>Opening Secure Payment...';
+
+    } else {
+
+      payBtn.disabled = false;
+
+      payBtn.textContent =
+        "Pay with UPI";
 
     }
 
+  }
 
-    /* ==========================================
-       SHOW PLAN
-       ========================================== */
+
+  /* ================================
+     CREATE RSPAY PAYMENT
+     ================================ */
+
+  async function createPayment() {
+
+    hideError();
 
     if (
       !planNameFromUrl ||
       !Number.isFinite(amountFromUrl) ||
-      amountFromUrl <= 0
+      amountFromUrl < 200
     ) {
 
-      planName.textContent =
-        "Invalid Plan";
-
-      amount.textContent =
-        "₹0";
-
-      payBtn.disabled = true;
-
       showError(
-        "Invalid plan or payment amount. Please go back and select a plan again."
+        "Invalid payment amount."
       );
 
-    } else {
-
-      planName.textContent =
-        planNameFromUrl;
-
-      amount.textContent =
-        formatAmount(amountFromUrl);
+      return;
 
     }
 
 
-    /* ==========================================
-       ERROR MESSAGE
-       ========================================== */
-
-    function showError(message) {
-
-      errorBox.textContent = message;
-
-      errorBox.classList.add("show");
-
-    }
+    setLoading(true);
 
 
-    function hideError() {
+    try {
 
-      errorBox.textContent = "";
+      /*
+       * IMPORTANT:
+       * Secret RSPay credentials stay on server.js.
+       *
+       * Frontend only sends:
+       * plan + amount
+       */
 
-      errorBox.classList.remove("show");
-
-    }
-
-
-    /* ==========================================
-       BUTTON LOADING
-       ========================================== */
-
-    function setLoading(loading) {
-
-      if (loading) {
-
-        payBtn.disabled = true;
-
-        payBtn.innerHTML = `
-          <span class="loading">
-            <span class="spinner"></span>
-            Opening Secure Payment...
-          </span>
-        `;
-
-      } else {
-
-        payBtn.disabled = false;
-
-        payBtn.textContent =
-          "Pay with UPI";
-
-      }
-
-    }
-
-
-    /* ==========================================
-       VERIFY PAYMENT
-       ========================================== */
-
-    async function verifyPayment(paymentResponse) {
-
-      try {
-
-        const verifyResponse =
-          await fetch("/api/payment/verify", {
-
+      const response =
+        await fetch(
+          "/api/payment/create-order",
+          {
             method: "POST",
 
             headers: {
@@ -687,338 +558,105 @@
 
             body: JSON.stringify({
 
-              razorpay_order_id:
-                paymentResponse.razorpay_order_id,
+              plan:
+                planNameFromUrl,
 
-              razorpay_payment_id:
-                paymentResponse.razorpay_payment_id,
-
-              razorpay_signature:
-                paymentResponse.razorpay_signature
+              amount:
+                amountFromUrl
 
             })
-
-          });
-
-
-        const verifyData =
-          await verifyResponse.json();
-
-
-        if (
-          !verifyResponse.ok ||
-          !verifyData.success
-        ) {
-
-          throw new Error(
-            verifyData.message ||
-            "Payment verification failed."
-          );
-
-        }
-
-
-        /* Payment verified */
-        successOverlay.classList.add("show");
-
-        document.body.style.overflow =
-          "hidden";
-
-
-      } catch (error) {
-
-        console.error(
-          "Payment verification error:",
-          error
-        );
-
-        showError(
-          error.message ||
-          "Payment verification failed."
-        );
-
-      } finally {
-
-        setLoading(false);
-
-      }
-
-    }
-
-
-    /* ==========================================
-       OPEN RAZORPAY
-       ========================================== */
-
-    async function openRazorpay() {
-
-      hideError();
-
-      if (
-        !planNameFromUrl ||
-        !Number.isFinite(amountFromUrl) ||
-        amountFromUrl <= 0
-      ) {
-
-        showError(
-          "Invalid payment amount. Please select the plan again."
-        );
-
-        return;
-
-      }
-
-
-      /* Check Razorpay SDK */
-      if (
-        typeof Razorpay === "undefined"
-      ) {
-
-        showError(
-          "Razorpay could not be loaded. Please check your internet connection and refresh the page."
-        );
-
-        return;
-
-      }
-
-
-      setLoading(true);
-
-
-      try {
-
-        /* =====================================
-           CREATE RAZORPAY ORDER
-           ===================================== */
-
-        const orderResponse =
-          await fetch(
-            "/api/payment/create-order",
-            {
-
-              method: "POST",
-
-              headers: {
-                "Content-Type": "application/json"
-              },
-
-              credentials: "same-origin",
-
-              body: JSON.stringify({
-
-                plan:
-                  planNameFromUrl,
-
-                amount:
-                  amountFromUrl
-
-              })
-
-            }
-          );
-
-
-        const orderData =
-          await orderResponse.json();
-
-
-        if (
-          !orderResponse.ok ||
-          !orderData.success
-        ) {
-
-          throw new Error(
-            orderData.message ||
-            "Unable to create payment order."
-          );
-
-        }
-
-
-        if (
-          !orderData.key ||
-          !orderData.orderId
-        ) {
-
-          throw new Error(
-            "Razorpay order information is missing."
-          );
-
-        }
-
-
-        /* =====================================
-           RAZORPAY OPTIONS
-           ===================================== */
-
-        const options = {
-
-          key:
-            orderData.key,
-
-          amount:
-            orderData.amount,
-
-          currency:
-            orderData.currency || "INR",
-
-          name:
-            "TRUE WALK",
-
-          description:
-            "Deposit - " +
-            planNameFromUrl,
-
-          order_id:
-            orderData.orderId,
-
-
-          /* UPI ONLY */
-          method: {
-
-            upi: true,
-
-            card: false,
-
-            netbanking: false,
-
-            wallet: false,
-
-            emi: false,
-
-            paylater: false
-
-          },
-
-
-          prefill: {
-            method: "upi"
-          },
-
-
-          theme: {
-
-            color:
-              "#16a34a"
-
-          },
-
-
-          modal: {
-
-            escape: false,
-
-            backdropclose: false,
-
-            ondismiss: function () {
-
-              setLoading(false);
-
-            }
-
-          },
-
-
-          handler:
-            async function (
-              response
-            ) {
-
-              await verifyPayment(
-                response
-              );
-
-            }
-
-        };
-
-
-        /* =====================================
-           CREATE RAZORPAY INSTANCE
-           ===================================== */
-
-        const razorpay =
-          new Razorpay(options);
-
-
-        razorpay.on(
-          "payment.failed",
-          function (response) {
-
-            console.error(
-              "Razorpay payment failed:",
-              response
-            );
-
-            showError(
-              response.error &&
-              response.error.description
-                ? response.error.description
-                : "Payment failed. Please try again."
-            );
-
-            setLoading(false);
-
           }
         );
 
 
-        /* =====================================
-           OPEN RAZORPAY
-           ===================================== */
+      let data;
 
-        razorpay.open();
+      try {
 
+        data =
+          await response.json();
 
-      } catch (error) {
+      } catch {
 
-        console.error(
-          "Razorpay error:",
-          error
+        throw new Error(
+          "Server returned an invalid response."
         );
-
-        showError(
-          error.message ||
-          "Unable to open Razorpay."
-        );
-
-        setLoading(false);
 
       }
+
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+
+        throw new Error(
+          data.message ||
+          "Unable to create payment."
+        );
+
+      }
+
+
+      /*
+       * server.js should return:
+       *
+       * {
+       *   success: true,
+       *   payUrl: "https://..."
+       * }
+       */
+
+      const payUrl =
+        data.payUrl ||
+        data.paymentUrl ||
+        data.url;
+
+
+      if (!payUrl) {
+
+        throw new Error(
+          "Payment URL was not returned by server."
+        );
+
+      }
+
+
+      /* Redirect to RSPay payment page */
+
+      window.location.href =
+        payUrl;
+
+
+    } catch (error) {
+
+      console.error(
+        "RSPay payment error:",
+        error
+      );
+
+      showError(
+        error.message ||
+        "Unable to create payment. Please try again."
+      );
+
+      setLoading(false);
 
     }
 
-
-    /* ==========================================
-       PAY BUTTON
-       ========================================== */
-
-    payBtn.addEventListener(
-      "click",
-      function () {
-
-        openRazorpay();
-
-      }
-    );
+  }
 
 
-    /* ==========================================
-       SUCCESS → DASHBOARD
-       ========================================== */
+  /* ================================
+     PAY BUTTON
+     ================================ */
 
-    successBtn.addEventListener(
-      "click",
-      function () {
+  payBtn.addEventListener(
+    "click",
+    createPayment
+  );
 
-        window.location.href =
-          "home.html";
-
-      }
-    );
-
-  </script>
+</script>
 
 </body>
 </html>
