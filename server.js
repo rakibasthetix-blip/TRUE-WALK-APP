@@ -241,7 +241,6 @@ const paymentSchema =
         default: null
       },
 
-      // Stored in paise
       amount: {
         type: Number,
         required: true
@@ -301,7 +300,6 @@ const withdrawalSchema =
         index: true
       },
 
-      // Requested amount in paise
       amount: {
         type: Number,
         required: true
@@ -561,6 +559,7 @@ function admin(
 
 // =====================================================
 // SESSION
+// FIXED: RENDER + MONGODB SESSION PERSISTENCE
 // =====================================================
 
 app.use(
@@ -574,6 +573,8 @@ app.use(
 
     saveUninitialized: false,
 
+    proxy: true,
+
     store:
       MongoStore.create({
         mongoUrl: MONGO_URI,
@@ -583,9 +584,15 @@ app.use(
 
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
+
       secure:
         process.env.NODE_ENV === 'production',
+
+      sameSite:
+        process.env.NODE_ENV === 'production'
+          ? 'none'
+          : 'lax',
+
       maxAge:
         14 * 24 * 60 * 60 * 1000
     }
@@ -610,7 +617,7 @@ app.get(
 
 // =====================================================
 // ADMIN LOGIN
-// FIXED: EXPLICIT SESSION SAVE
+// FIXED: NEW SESSION + EXPLICIT MONGODB SAVE
 // =====================================================
 
 app.post(
@@ -655,35 +662,62 @@ app.post(
 
       }
 
-      req.session.userId = null;
-      req.session.isAdmin = true;
+      // Create a fresh session after
+      // successful admin authentication.
+      req.session.regenerate(
+        (regenerateError) => {
 
-      // IMPORTANT:
-      // Wait until MongoStore saves the session.
-      req.session.save((error) => {
+          if (regenerateError) {
 
-        if (error) {
+            console.error(
+              'Admin session regenerate error:',
+              regenerateError
+            );
 
-          console.error(
-            'Admin session save error:',
-            error
+            return res.status(500).json({
+              success: false,
+              message:
+                'Unable to create admin session.'
+            });
+
+          }
+
+          req.session.userId = null;
+
+          req.session.isAdmin = true;
+
+          // Explicitly save the session
+          // into MongoDB before responding.
+          req.session.save(
+            (saveError) => {
+
+              if (saveError) {
+
+                console.error(
+                  'Admin session save error:',
+                  saveError
+                );
+
+                return res.status(500).json({
+                  success: false,
+                  message:
+                    'Unable to save admin session.'
+                });
+
+              }
+
+              return res.json({
+                success: true,
+                isAdmin: true,
+                message:
+                  'Admin login successful.'
+              });
+
+            }
           );
 
-          return res.status(500).json({
-            success: false,
-            message:
-              'Unable to save admin session.'
-          });
-
         }
-
-        return res.json({
-          success: true,
-          message:
-            'Admin login successful.'
-        });
-
-      });
+      );
 
     } catch (error) {
 
@@ -2817,7 +2851,6 @@ app.post(
 
       }
 
-      // Pending -> Processing -> Completed
       if (
         withdrawal.status !==
         'processing'
@@ -2893,8 +2926,6 @@ app.post(
             );
           }
 
-          // Rejection is allowed only while
-          // the withdrawal is still pending.
           if (
             withdrawal.status !==
             'pending'
@@ -3012,8 +3043,6 @@ app.post(
 
 // =====================================================
 // ADMIN SUMMARY
-// FIXED: REAL BALANCE + PAYMENT AMOUNTS +
-// WITHDRAWAL AMOUNTS + PROCESSING COUNT
 // =====================================================
 
 app.get(
@@ -3023,16 +3052,8 @@ app.get(
 
     try {
 
-      // -----------------------------------------------
-      // TOTAL USERS
-      // -----------------------------------------------
-
       const totalUsers =
         await User.countDocuments();
-
-      // -----------------------------------------------
-      // TOTAL WALLET BALANCE
-      // -----------------------------------------------
 
       const walletResult =
         await Wallet.aggregate([
@@ -3056,10 +3077,6 @@ app.get(
         Number(
           walletResult[0]?.total || 0
         );
-
-      // -----------------------------------------------
-      // WITHDRAWAL SUMMARY
-      // -----------------------------------------------
 
       const withdrawalResult =
         await Withdrawal.aggregate([
@@ -3136,18 +3153,12 @@ app.get(
           completedWithdrawals =
             count;
 
-          // Only completed withdrawals
-          // are counted as Total Withdrawn.
           totalWithdrawnPaise +=
             amount;
 
         }
 
       }
-
-      // -----------------------------------------------
-      // PAID PAYMENT SUMMARY
-      // -----------------------------------------------
 
       const paymentResult =
         await Payment.aggregate([
@@ -3194,17 +3205,10 @@ app.get(
           paymentResult[0]?.count || 0
         );
 
-      // -----------------------------------------------
-      // RETURN BOTH naming formats
-      // so existing admin-dashboard.html
-      // continues working.
-      // -----------------------------------------------
-
       return res.json({
 
         success: true,
 
-        // Existing API fields
         total_users:
           totalUsers,
 
@@ -3217,7 +3221,6 @@ app.get(
         successful_payments:
           successfulPayments,
 
-        // Dashboard-compatible fields
         totalUsers:
           totalUsers,
 
