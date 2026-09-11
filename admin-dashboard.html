@@ -402,29 +402,35 @@ th{
 
     <div class="nav-title">Main</div>
 
-    <button class="nav-btn active" onclick="scrollToSection('dashboardSection')">
+    <button class="nav-btn active"
+      onclick="scrollToSection('dashboardSection')">
       📊 Dashboard
     </button>
 
-    <button class="nav-btn" onclick="scrollToSection('usersSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('usersSection')">
       👥 Users
     </button>
 
-    <button class="nav-btn" onclick="scrollToSection('withdrawalsSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('withdrawalsSection')">
       💸 Withdrawals
     </button>
 
     <div class="nav-title">Management</div>
 
-    <button class="nav-btn" onclick="scrollToSection('walletSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('walletSection')">
       💰 Wallet Management
     </button>
 
-    <button class="nav-btn" onclick="refreshAll()">
+    <button class="nav-btn"
+      onclick="refreshAll()">
       🔄 Refresh Data
     </button>
 
-    <button class="nav-btn logout-btn" onclick="logoutAdmin()">
+    <button class="nav-btn logout-btn"
+      onclick="logoutAdmin()">
       🚪 Logout
     </button>
 
@@ -435,16 +441,20 @@ th{
   <main class="main">
 
     <div class="topbar">
+
       <div>
         <h1>Admin Dashboard</h1>
+
         <div style="font-size:12px;color:#6b7280;margin-top:5px;">
           TRUE WALK Administration
         </div>
       </div>
 
-      <button class="refresh-btn" onclick="refreshAll()">
+      <button class="refresh-btn"
+        onclick="refreshAll()">
         🔄 Refresh
       </button>
+
     </div>
 
 
@@ -504,11 +514,13 @@ th{
           </thead>
 
           <tbody id="withdrawalsBody">
+
             <tr>
               <td colspan="8" class="empty">
                 Loading withdrawals...
               </td>
             </tr>
+
           </tbody>
 
         </table>
@@ -522,12 +534,17 @@ th{
     <section class="section" id="walletSection">
 
       <div class="section-head">
+
         <div>
+
           <h2>💰 Wallet Management</h2>
+
           <div style="font-size:12px;color:#6b7280;margin-top:5px;">
             Manage authorised user wallet adjustments
           </div>
+
         </div>
+
       </div>
 
       <div class="table-wrap">
@@ -535,6 +552,7 @@ th{
         <table>
 
           <thead>
+
             <tr>
               <th>ID</th>
               <th>Name</th>
@@ -543,14 +561,17 @@ th{
               <th>Registered</th>
               <th>Action</th>
             </tr>
+
           </thead>
 
           <tbody id="walletUsersBody">
+
             <tr>
               <td colspan="6" class="empty">
                 Loading users...
               </td>
             </tr>
+
           </tbody>
 
         </table>
@@ -572,6 +593,7 @@ th{
         <table>
 
           <thead>
+
             <tr>
               <th>ID</th>
               <th>Name</th>
@@ -580,14 +602,17 @@ th{
               <th>Registered</th>
               <th>Wallet</th>
             </tr>
+
           </thead>
 
           <tbody id="usersBody">
+
             <tr>
               <td colspan="6" class="empty">
                 Loading users...
               </td>
             </tr>
+
           </tbody>
 
         </table>
@@ -607,8 +632,14 @@ th{
   <div class="modal-box">
 
     <div class="modal-head">
+
       <h2>Wallet Management</h2>
-      <button class="close" onclick="closeWalletModal()">×</button>
+
+      <button class="close"
+        onclick="closeWalletModal()">
+        ×
+      </button>
+
     </div>
 
     <div class="user-info">
@@ -618,7 +649,7 @@ th{
       </div>
 
       <div id="walletUserName"
-           style="font-weight:700;margin-top:3px;">
+        style="font-weight:700;margin-top:3px;">
         -
       </div>
 
@@ -626,7 +657,8 @@ th{
         Current Balance
       </div>
 
-      <div class="current-balance" id="walletCurrentBalance">
+      <div class="current-balance"
+        id="walletCurrentBalance">
         ₹0
       </div>
 
@@ -635,7 +667,10 @@ th{
 
     <form id="walletForm">
 
-      <input type="hidden" id="walletUserId">
+      <input
+        type="hidden"
+        id="walletUserId"
+      >
 
 
       <div class="form-group">
@@ -687,7 +722,9 @@ th{
       </div>
 
 
-      <button class="save-btn" type="submit">
+      <button
+        class="save-btn"
+        type="submit">
         Save Wallet Adjustment
       </button>
 
@@ -700,7 +737,8 @@ th{
 
 <script>
 
-const $ = (id) => document.getElementById(id);
+const $ = (id) =>
+  document.getElementById(id);
 
 
 /* =========================================================
@@ -710,23 +748,78 @@ const $ = (id) => document.getElementById(id);
 async function api(url, options = {}) {
 
   const response = await fetch(url, {
+
     credentials: "include",
+
     ...options
+
   });
 
-  let data;
+
+  let data = null;
+
+  const contentType =
+    response.headers.get("content-type") || "";
+
 
   try {
-    data = await response.json();
-  } catch {
-    throw new Error("Invalid server response.");
+
+    if (
+      contentType.includes("application/json")
+    ) {
+
+      data =
+        await response.json();
+
+    } else {
+
+      const text =
+        await response.text();
+
+      const error =
+        new Error(
+          text ||
+          "Invalid server response."
+        );
+
+      error.status =
+        response.status;
+
+      throw error;
+    }
+
+  } catch (error) {
+
+    if (error.status) {
+      throw error;
+    }
+
+    const newError =
+      new Error(
+        "Invalid server response."
+      );
+
+    newError.status =
+      response.status;
+
+    throw newError;
   }
 
+
   if (!response.ok) {
-    throw new Error(
-      data.message || "Request failed."
-    );
+
+    const error =
+      new Error(
+        data?.message ||
+        "Request failed."
+      );
+
+    error.status =
+      response.status;
+
+    throw error;
   }
+
 
   return data;
 }
@@ -738,22 +831,25 @@ async function api(url, options = {}) {
 
 function money(value) {
 
-  const amount = Number(value || 0);
+  const amount =
+    Number(value || 0);
 
-  return "₹" + amount.toLocaleString("en-IN", {
-    maximumFractionDigits: 2
-  });
+  return "₹" +
+    amount.toLocaleString("en-IN", {
+      maximumFractionDigits:2
+    });
 }
 
 
 function escapeHtml(value) {
 
   return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
 
 
@@ -768,16 +864,45 @@ async function checkAdmin() {
     const result =
       await api("/api/admin/me");
 
-    if (!result.success) {
-      location.href = "/admin.html";
-      return false;
+
+    console.log(
+      "ADMIN SESSION:",
+      result
+    );
+
+
+    if (
+      result &&
+      result.success === true &&
+      result.isAdmin === true
+    ) {
+
+      return true;
+
     }
 
-    return true;
+
+    alert(
+      "Admin session is not active. Please login again."
+    );
+
+    return false;
+
 
   } catch (error) {
 
-    location.href = "/admin.html";
+    console.error(
+      "ADMIN SESSION ERROR:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Unable to verify admin session."
+    );
+
+
     return false;
   }
 }
@@ -790,31 +915,67 @@ async function checkAdmin() {
 async function loadSummary() {
 
   const result =
-    await api("/api/admin/summary");
+    await api(
+      "/api/admin/summary"
+    );
+
 
   const data =
-    result.summary || result.data || result;
+    result.summary ||
+    result.data ||
+    result;
+
 
   $("totalUsers").textContent =
-    Number(data.total_users || data.totalUsers || 0);
+    Number(
+      data.total_users ||
+      data.totalUsers ||
+      0
+    );
+
 
   $("totalBalance").textContent =
-    money(data.total_balance || data.totalBalance || 0);
+    money(
+      data.total_balance ||
+      data.totalBalance ||
+      0
+    );
+
 
   $("totalWithdrawn").textContent =
-    money(data.total_withdrawals || data.totalWithdrawn || 0);
+    money(
+      data.total_withdrawals ||
+      data.totalWithdrawn ||
+      0
+    );
+
 
   const pending =
-    Number(data.pending_withdrawals || data.pending || 0);
+    Number(
+      data.pending_withdrawals ||
+      data.pending ||
+      0
+    );
+
 
   const processing =
-    Number(data.processing_withdrawals || data.processing || 0);
+    Number(
+      data.processing_withdrawals ||
+      data.processing ||
+      0
+    );
+
 
   $("pendingWithdrawals").textContent =
     pending + processing;
 
+
   $("totalPayments").textContent =
-    money(data.total_payments || data.totalPayments || 0);
+    money(
+      data.total_payments ||
+      data.totalPayments ||
+      0
+    );
 }
 
 
@@ -825,14 +986,23 @@ async function loadSummary() {
 async function loadUsers() {
 
   const result =
-    await api("/api/admin/users");
+    await api(
+      "/api/admin/users"
+    );
+
 
   const users =
     Array.isArray(result)
       ? result
-      : (result.users || result.data || []);
+      : (
+          result.users ||
+          result.data ||
+          []
+        );
+
 
   renderUsers(users);
+
   renderWalletUsers(users);
 }
 
@@ -842,18 +1012,28 @@ function renderUsers(users) {
   const body =
     $("usersBody");
 
+
   if (!users.length) {
 
     body.innerHTML = `
+
       <tr>
-        <td colspan="6" class="empty">
+
+        <td
+          colspan="6"
+          class="empty">
+
           No users found.
+
         </td>
+
       </tr>
+
     `;
 
     return;
   }
+
 
   body.innerHTML =
     users.map(user => {
@@ -861,14 +1041,17 @@ function renderUsers(users) {
       const id =
         user.id;
 
+
       const name =
         user.name ||
         user.full_name ||
         "User";
 
+
       const phone =
         user.phone ||
         "-";
+
 
       const balance =
         Number(
@@ -877,16 +1060,24 @@ function renderUsers(users) {
           0
         );
 
+
       return `
+
         <tr>
 
-          <td>${escapeHtml(id)}</td>
-
           <td>
-            <strong>${escapeHtml(name)}</strong>
+            ${escapeHtml(id)}
           </td>
 
-          <td>${escapeHtml(phone)}</td>
+          <td>
+            <strong>
+              ${escapeHtml(name)}
+            </strong>
+          </td>
+
+          <td>
+            ${escapeHtml(phone)}
+          </td>
 
           <td class="balance">
             ${money(balance)}
@@ -915,6 +1106,7 @@ function renderUsers(users) {
           </td>
 
         </tr>
+
       `;
 
     }).join("");
@@ -926,18 +1118,28 @@ function renderWalletUsers(users) {
   const body =
     $("walletUsersBody");
 
+
   if (!users.length) {
 
     body.innerHTML = `
+
       <tr>
-        <td colspan="6" class="empty">
+
+        <td
+          colspan="6"
+          class="empty">
+
           No users found.
+
         </td>
+
       </tr>
+
     `;
 
     return;
   }
+
 
   body.innerHTML =
     users.map(user => {
@@ -945,14 +1147,17 @@ function renderWalletUsers(users) {
       const id =
         user.id;
 
+
       const name =
         user.name ||
         user.full_name ||
         "User";
 
+
       const phone =
         user.phone ||
         "-";
+
 
       const balance =
         Number(
@@ -961,16 +1166,24 @@ function renderWalletUsers(users) {
           0
         );
 
+
       return `
+
         <tr>
 
-          <td>${escapeHtml(id)}</td>
-
           <td>
-            <strong>${escapeHtml(name)}</strong>
+            ${escapeHtml(id)}
           </td>
 
-          <td>${escapeHtml(phone)}</td>
+          <td>
+            <strong>
+              ${escapeHtml(name)}
+            </strong>
+          </td>
+
+          <td>
+            ${escapeHtml(phone)}
+          </td>
 
           <td class="balance">
             ${money(balance)}
@@ -999,6 +1212,7 @@ function renderWalletUsers(users) {
           </td>
 
         </tr>
+
       `;
 
     }).join("");
@@ -1014,134 +1228,207 @@ function openWalletModal(user) {
   $("walletUserId").value =
     user.id;
 
+
   $("walletUserName").textContent =
     `${user.name} (${user.phone})`;
+
 
   $("walletCurrentBalance").textContent =
     money(user.balance);
 
+
   $("adjustmentType").value =
     "credit";
+
 
   $("adjustmentAmount").value =
     "";
 
+
   $("adjustmentReason").value =
     "";
 
-  $("walletModal").classList.add("show");
+
+  $("walletModal")
+    .classList
+    .add("show");
 }
 
 
 function closeWalletModal() {
 
-  $("walletModal").classList.remove("show");
+  $("walletModal")
+    .classList
+    .remove("show");
 }
 
 
-$("walletModal").addEventListener("click", function(event) {
+$("walletModal")
+  .addEventListener(
+    "click",
+    function(event) {
 
-  if (event.target === this) {
-    closeWalletModal();
-  }
+      if (
+        event.target === this
+      ) {
 
-});
+        closeWalletModal();
+
+      }
+
+    }
+  );
 
 
 /* =========================================================
    SAVE BALANCE ADJUSTMENT
 ========================================================= */
 
-$("walletForm").addEventListener("submit", async function(event) {
+$("walletForm")
+  .addEventListener(
+    "submit",
+    async function(event) {
 
-  event.preventDefault();
-
-const userId = $("walletUserId").value.trim();
+      event.preventDefault();
 
 
-  const type =
-    $("adjustmentType").value;
+      const userId =
+        $("walletUserId")
+          .value
+          .trim();
 
-  const amount =
-    Number($("adjustmentAmount").value);
 
-  const reason =
-    $("adjustmentReason").value.trim();
+      const type =
+        $("adjustmentType")
+          .value;
 
-  if (!userId) {
-    alert("Invalid user.");
-    return;
-  }
 
-  if (!amount || amount <= 0) {
-    alert("Enter a valid amount.");
-    return;
-  }
+      const amount =
+        Number(
+          $("adjustmentAmount")
+            .value
+        );
 
-  if (!reason) {
-    alert("Enter a reason.");
-    return;
-  }
 
-  const button =
-    this.querySelector(".save-btn");
+      const reason =
+        $("adjustmentReason")
+          .value
+          .trim();
 
-  button.disabled = true;
-  button.textContent = "Saving...";
 
-  try {
+      if (!userId) {
 
-    const result =
-      await api(
-        `/api/admin/users/${userId}/balance`,
-        {
-          method: "POST",
+        alert(
+          "Invalid user."
+        );
 
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
+        return;
+      }
 
-          body: JSON.stringify({
-            amount,
-            type,
-            reason
-          })
+
+      if (!amount || amount <= 0) {
+
+        alert(
+          "Enter a valid amount."
+        );
+
+        return;
+      }
+
+
+      if (!reason) {
+
+        alert(
+          "Enter a reason."
+        );
+
+        return;
+      }
+
+
+      const button =
+        this.querySelector(
+          ".save-btn"
+        );
+
+
+      button.disabled =
+        true;
+
+
+      button.textContent =
+        "Saving...";
+
+
+      try {
+
+        const result =
+          await api(
+            `/api/admin/users/${encodeURIComponent(userId)}/balance`,
+            {
+
+              method:"POST",
+
+              headers:{
+                "Content-Type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  amount,
+                  type,
+                  reason
+                })
+
+            }
+          );
+
+
+        if (!result.success) {
+
+          throw new Error(
+            result.message ||
+            "Balance adjustment failed."
+          );
+
         }
-      );
 
-    if (!result.success) {
-      throw new Error(
-        result.message ||
-        "Balance adjustment failed."
-      );
+
+        alert(
+          type === "credit"
+            ? "Balance credited successfully."
+            : "Balance debited successfully."
+        );
+
+
+        closeWalletModal();
+
+
+        await refreshAll();
+
+
+      } catch (error) {
+
+        alert(
+          error.message ||
+          "Unable to update balance."
+        );
+
+
+      } finally {
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "Save Wallet Adjustment";
+
+      }
+
     }
-
-    alert(
-      type === "credit"
-        ? "Balance credited successfully."
-        : "Balance debited successfully."
-    );
-
-    closeWalletModal();
-
-    await refreshAll();
-
-  } catch (error) {
-
-    alert(
-      error.message ||
-      "Unable to update balance."
-    );
-
-  } finally {
-
-    button.disabled = false;
-    button.textContent =
-      "Save Wallet Adjustment";
-  }
-
-});
+  );
 
 
 /* =========================================================
@@ -1151,7 +1438,10 @@ const userId = $("walletUserId").value.trim();
 async function loadWithdrawals() {
 
   const result =
-    await api("/api/admin/withdrawals");
+    await api(
+      "/api/admin/withdrawals"
+    );
+
 
   const withdrawals =
     Array.isArray(result)
@@ -1162,69 +1452,94 @@ async function loadWithdrawals() {
           []
         );
 
-  renderWithdrawals(withdrawals);
+
+  renderWithdrawals(
+    withdrawals
+  );
 }
 
 
 function statusLabel(status) {
 
   const map = {
-    pending: "Pending",
-    processing: "Processing",
-    completed: "Complete",
-    rejected: "Rejected"
+
+    pending:"Pending",
+
+    processing:"Processing",
+
+    completed:"Complete",
+
+    rejected:"Rejected"
+
   };
 
-  return map[status] || status;
+
+  return (
+    map[status] ||
+    status
+  );
 }
 
 
-function renderWithdrawals(withdrawals) {
+function renderWithdrawals(
+  withdrawals
+) {
 
   const body =
     $("withdrawalsBody");
 
+
   if (!withdrawals.length) {
 
     body.innerHTML = `
+
       <tr>
-        <td colspan="8" class="empty">
+
+        <td
+          colspan="8"
+          class="empty">
+
           No withdrawals found.
+
         </td>
+
       </tr>
+
     `;
 
     return;
   }
 
+
   body.innerHTML =
     withdrawals.map(w => {
 
       const status =
-        String(w.status || "pending")
-          .toLowerCase();
+        String(
+          w.status ||
+          "pending"
+        ).toLowerCase();
+
 
       let actions = "";
 
-      /*
-        Pending:
-        Processing + Reject
-      */
 
-      if (status === "pending") {
+      if (
+        status === "pending"
+      ) {
 
         actions = `
 
           <button
             class="action processing-btn"
-            onclick="setProcessing(${Number(w.id)})"
+            onclick="setProcessing('${String(w.id).replace(/'/g,"\\'")}')"
           >
             Processing
           </button>
 
           <button
             class="action reject-btn"
-            onclick="rejectWithdrawal(${Number(w.id)})"
+            onclick="rejectWithdrawal('${String(w.id).replace(/'/g,"\\'")}')"
           >
             Reject
           </button>
@@ -1233,21 +1548,16 @@ function renderWithdrawals(withdrawals) {
 
       }
 
-      /*
-        Processing:
-        Complete only
 
-        Complete तभी करें जब वास्तविक payout
-        पहले से भेजा जा चुका हो.
-      */
-
-      else if (status === "processing") {
+      else if (
+        status === "processing"
+      ) {
 
         actions = `
 
           <button
             class="action complete-btn"
-            onclick="completeWithdrawal(${Number(w.id)})"
+            onclick="completeWithdrawal('${String(w.id).replace(/'/g,"\\'")}')"
           >
             Complete
           </button>
@@ -1256,29 +1566,44 @@ function renderWithdrawals(withdrawals) {
 
       }
 
+
       else {
 
         actions = `
-          <span style="color:#9ca3af;font-size:12px;">
+
+          <span
+            style="color:#9ca3af;font-size:12px;">
+
             No action
+
           </span>
+
         `;
 
       }
+
 
       const userName =
         w.user_name ||
         w.name ||
         w.phone ||
-        ("User #" + (w.user_id || "-"));
+        (
+          "User #" +
+          (w.user_id || "-")
+        );
+
 
       const amount =
-        Number(w.amount || 0);
+        Number(
+          w.amount || 0
+        );
+
 
       const method =
         w.method ||
         w.payment_method ||
         "-";
+
 
       const destination =
         w.destination ||
@@ -1287,10 +1612,14 @@ function renderWithdrawals(withdrawals) {
         w.address ||
         "-";
 
+
       return `
+
         <tr>
 
-          <td>#${escapeHtml(w.id)}</td>
+          <td>
+            #${escapeHtml(w.id)}
+          </td>
 
           <td>
             ${escapeHtml(userName)}
@@ -1309,11 +1638,16 @@ function renderWithdrawals(withdrawals) {
           </td>
 
           <td>
-            <span class="status ${escapeHtml(status)}">
+
+            <span
+              class="status ${escapeHtml(status)}">
+
               ${escapeHtml(
                 statusLabel(status)
               )}
+
             </span>
+
           </td>
 
           <td>
@@ -1325,12 +1659,17 @@ function renderWithdrawals(withdrawals) {
           </td>
 
           <td>
+
             <div class="actions">
+
               ${actions}
+
             </div>
+
           </td>
 
         </tr>
+
       `;
 
     }).join("");
@@ -1348,31 +1687,39 @@ async function setProcessing(id) {
       "Move this withdrawal to Processing?"
     )
   ) {
+
     return;
   }
+
 
   try {
 
     const result =
       await api(
-        `/api/admin/withdrawals/${id}/processing`,
+        `/api/admin/withdrawals/${encodeURIComponent(id)}/processing`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
+
     if (!result.success) {
+
       throw new Error(
         result.message ||
         "Unable to process withdrawal."
       );
+
     }
+
 
     alert(
       "Withdrawal moved to Processing."
     );
 
+
     await refreshAll();
+
 
   } catch (error) {
 
@@ -1393,36 +1740,46 @@ async function completeWithdrawal(id) {
 
   const confirmed =
     confirm(
+
       "Confirm only if the real payout has already been sent to the user.\n\n" +
       "Do you want to mark this withdrawal as Complete?"
+
     );
+
 
   if (!confirmed) {
     return;
   }
 
+
   try {
 
     const result =
       await api(
-        `/api/admin/withdrawals/${id}/complete`,
+        `/api/admin/withdrawals/${encodeURIComponent(id)}/complete`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
+
     if (!result.success) {
+
       throw new Error(
         result.message ||
         "Unable to complete withdrawal."
       );
+
     }
+
 
     alert(
       "Withdrawal marked as Complete."
     );
 
+
     await refreshAll();
+
 
   } catch (error) {
 
@@ -1443,36 +1800,46 @@ async function rejectWithdrawal(id) {
 
   const confirmed =
     confirm(
+
       "Reject this withdrawal?\n\n" +
       "The reserved amount will be refunded to the user's wallet."
+
     );
+
 
   if (!confirmed) {
     return;
   }
 
+
   try {
 
     const result =
       await api(
-        `/api/admin/withdrawals/${id}/reject`,
+        `/api/admin/withdrawals/${encodeURIComponent(id)}/reject`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
+
     if (!result.success) {
+
       throw new Error(
         result.message ||
         "Unable to reject withdrawal."
       );
+
     }
+
 
     alert(
       "Withdrawal rejected and amount refunded."
     );
 
+
     await refreshAll();
+
 
   } catch (error) {
 
@@ -1489,15 +1856,31 @@ async function rejectWithdrawal(id) {
    REFRESH EVERYTHING
 ========================================================= */
 
+let refreshRunning = false;
+
+
 async function refreshAll() {
+
+  if (refreshRunning) {
+    return;
+  }
+
+
+  refreshRunning = true;
+
 
   try {
 
     await Promise.all([
+
       loadSummary(),
+
       loadUsers(),
+
       loadWithdrawals()
+
     ]);
+
 
   } catch (error) {
 
@@ -1506,10 +1889,17 @@ async function refreshAll() {
       error
     );
 
+
     alert(
       error.message ||
       "Unable to refresh dashboard."
     );
+
+
+  } finally {
+
+    refreshRunning = false;
+
   }
 }
 
@@ -1522,6 +1912,7 @@ function scrollToSection(id) {
 
   const element =
     document.getElementById(id);
+
 
   if (element) {
 
@@ -1549,9 +1940,11 @@ async function logoutAdmin() {
       }
     );
 
+
   } catch (error) {
 
     console.error(error);
+
 
   } finally {
 
@@ -1571,33 +1964,50 @@ async function logoutAdmin() {
   const isAdmin =
     await checkAdmin();
 
+
   if (!isAdmin) {
     return;
   }
+
 
   await refreshAll();
 
 })();
 
 
-/* Auto refresh every 30 seconds */
+/* =========================================================
+   AUTO REFRESH
+========================================================= */
 
-setInterval(async () => {
+setInterval(
+  async () => {
 
-  try {
+    try {
 
-    await refreshAll();
+      const isAdmin =
+        await checkAdmin();
 
-  } catch(error) {
 
-    console.error(
-      "AUTO REFRESH ERROR:",
-      error
-    );
+      if (!isAdmin) {
+        return;
+      }
 
-  }
 
-}, 30000);
+      await refreshAll();
+
+
+    } catch(error) {
+
+      console.error(
+        "AUTO REFRESH ERROR:",
+        error
+      );
+
+    }
+
+  },
+  30000
+);
 
 </script>
 
