@@ -127,6 +127,7 @@ input:focus{
   <form id="loginForm">
 
     <div class="form-group">
+
       <label for="username">
         Admin Username
       </label>
@@ -138,9 +139,12 @@ input:focus{
         placeholder="Enter username"
         required
       >
+
     </div>
 
+
     <div class="form-group">
+
       <label for="password">
         Admin Password
       </label>
@@ -152,7 +156,9 @@ input:focus{
         placeholder="Enter password"
         required
       >
+
     </div>
+
 
     <button
       id="loginButton"
@@ -165,6 +171,7 @@ input:focus{
   </form>
 
 </div>
+
 
 <script>
 
@@ -203,6 +210,10 @@ function hideError(){
 }
 
 
+/* =========================================================
+   ADMIN LOGIN
+========================================================= */
+
 form.addEventListener(
   "submit",
   async function(event){
@@ -217,6 +228,7 @@ form.addEventListener(
     const pass =
       password.value;
 
+
     if(!user || !pass){
 
       showError(
@@ -224,11 +236,14 @@ form.addEventListener(
       );
 
       return;
-
     }
 
+
     loginButton.disabled = true;
-    loginButton.textContent = "Logging in...";
+
+    loginButton.textContent =
+      "Logging in...";
+
 
     try{
 
@@ -255,12 +270,15 @@ form.addEventListener(
           }
         );
 
+
       const contentType =
         response.headers.get(
           "content-type"
         ) || "";
 
-      let data;
+
+      let data = null;
+
 
       if(
         contentType.includes(
@@ -283,6 +301,7 @@ form.addEventListener(
 
       }
 
+
       if(!response.ok){
 
         throw new Error(
@@ -292,6 +311,7 @@ form.addEventListener(
 
       }
 
+
       if(
         data &&
         data.success === true &&
@@ -299,28 +319,35 @@ form.addEventListener(
       ){
 
         /*
-         * IMPORTANT:
-         * Give the browser a moment after the
-         * successful session response before
-         * opening the dashboard.
+         * Session save ke baad dashboard open
          */
 
         await new Promise(
           resolve =>
-            setTimeout(resolve,300)
+            setTimeout(
+              resolve,
+              500
+            )
         );
 
-        window.location.href =
-          "/admin-dashboard.html";
+
+        /*
+         * Dashboard open
+         */
+
+        window.location.replace(
+          "/admin-dashboard.html"
+        );
 
         return;
-
       }
+
 
       throw new Error(
         data?.message ||
         "Admin login was not successful."
       );
+
 
     }catch(error){
 
@@ -329,14 +356,17 @@ form.addEventListener(
         error
       );
 
+
       showError(
         error.message ||
         "Unable to login."
       );
 
+
     }finally{
 
-      loginButton.disabled = false;
+      loginButton.disabled =
+        false;
 
       loginButton.textContent =
         "Login";
