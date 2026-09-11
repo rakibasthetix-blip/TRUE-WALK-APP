@@ -28,7 +28,6 @@ button{
   min-height:100vh;
 }
 
-/* SIDEBAR */
 .sidebar{
   width:250px;
   background:#111827;
@@ -81,7 +80,6 @@ button{
   color:#fff;
 }
 
-/* MAIN */
 .main{
   margin-left:250px;
   width:calc(100% - 250px);
@@ -110,7 +108,6 @@ button{
   border-radius:8px;
 }
 
-/* STATS */
 .stats{
   display:grid;
   grid-template-columns:repeat(5,1fr);
@@ -136,7 +133,6 @@ button{
   font-weight:800;
 }
 
-/* SECTION */
 .section{
   background:#fff;
   border-radius:14px;
@@ -156,7 +152,6 @@ button{
   font-size:19px;
 }
 
-/* TABLE */
 .table-wrap{
   width:100%;
   overflow-x:auto;
@@ -184,7 +179,6 @@ th{
   font-weight:700;
 }
 
-/* STATUS */
 .status{
   display:inline-block;
   padding:6px 9px;
@@ -213,7 +207,6 @@ th{
   color:#b91c1c;
 }
 
-/* ACTIONS */
 .actions{
   display:flex;
   gap:6px;
@@ -244,14 +237,27 @@ th{
   background:#7c3aed;
 }
 
-/* EMPTY */
 .empty{
   text-align:center;
   padding:30px;
   color:#6b7280;
 }
 
-/* MODAL */
+.error-box{
+  display:none;
+  background:#fef2f2;
+  color:#b91c1c;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  padding:14px;
+  margin-bottom:20px;
+  font-size:14px;
+}
+
+.error-box.show{
+  display:block;
+}
+
 .modal{
   display:none;
   position:fixed;
@@ -334,7 +340,6 @@ th{
   margin-top:5px;
 }
 
-/* MOBILE */
 @media(max-width:1100px){
   .stats{
     grid-template-columns:repeat(3,1fr);
@@ -393,7 +398,6 @@ th{
 
 <div class="layout">
 
-  <!-- SIDEBAR -->
   <aside class="sidebar">
 
     <div class="logo">
@@ -402,58 +406,61 @@ th{
 
     <div class="nav-title">Main</div>
 
-    <button class="nav-btn active" onclick="scrollToSection('dashboardSection')">
+    <button class="nav-btn active"
+      onclick="scrollToSection('dashboardSection')">
       📊 Dashboard
     </button>
 
-    <button class="nav-btn" onclick="scrollToSection('usersSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('usersSection')">
       👥 Users
     </button>
 
-    <button class="nav-btn" onclick="scrollToSection('withdrawalsSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('withdrawalsSection')">
       💸 Withdrawals
     </button>
 
     <div class="nav-title">Management</div>
 
-    <button class="nav-btn" onclick="scrollToSection('walletSection')">
+    <button class="nav-btn"
+      onclick="scrollToSection('walletSection')">
       💰 Wallet Management
     </button>
 
-    <button class="nav-btn" onclick="refreshAll()">
+    <button class="nav-btn"
+      onclick="refreshAll()">
       🔄 Refresh Data
     </button>
 
-    <button class="nav-btn logout-btn" onclick="logoutAdmin()">
+    <button class="nav-btn logout-btn"
+      onclick="logoutAdmin()">
       🚪 Logout
     </button>
 
   </aside>
 
-
-  <!-- MAIN -->
   <main class="main">
 
     <div class="topbar">
 
       <div>
-
         <h1>Admin Dashboard</h1>
 
         <div style="font-size:12px;color:#6b7280;margin-top:5px;">
           TRUE WALK Administration
         </div>
-
       </div>
 
-      <button class="refresh-btn" onclick="refreshAll()">
+      <button class="refresh-btn"
+        onclick="refreshAll()">
         🔄 Refresh
       </button>
 
     </div>
 
+    <div id="errorBox" class="error-box"></div>
 
-    <!-- STATS -->
     <section class="stats" id="dashboardSection">
 
       <div class="card">
@@ -483,8 +490,6 @@ th{
 
     </section>
 
-
-    <!-- WITHDRAWALS -->
     <section class="section" id="withdrawalsSection">
 
       <div class="section-head">
@@ -496,7 +501,6 @@ th{
         <table>
 
           <thead>
-
             <tr>
               <th>ID</th>
               <th>User</th>
@@ -507,17 +511,14 @@ th{
               <th>Date</th>
               <th>Action</th>
             </tr>
-
           </thead>
 
           <tbody id="withdrawalsBody">
 
             <tr>
-
               <td colspan="8" class="empty">
                 Loading withdrawals...
               </td>
-
             </tr>
 
           </tbody>
@@ -528,8 +529,6 @@ th{
 
     </section>
 
-
-    <!-- WALLET MANAGEMENT -->
     <section class="section" id="walletSection">
 
       <div class="section-head">
@@ -551,7 +550,6 @@ th{
         <table>
 
           <thead>
-
             <tr>
               <th>ID</th>
               <th>Name</th>
@@ -560,17 +558,14 @@ th{
               <th>Registered</th>
               <th>Action</th>
             </tr>
-
           </thead>
 
           <tbody id="walletUsersBody">
 
             <tr>
-
               <td colspan="6" class="empty">
                 Loading users...
               </td>
-
             </tr>
 
           </tbody>
@@ -581,8 +576,6 @@ th{
 
     </section>
 
-
-    <!-- USERS -->
     <section class="section" id="usersSection">
 
       <div class="section-head">
@@ -594,7 +587,6 @@ th{
         <table>
 
           <thead>
-
             <tr>
               <th>ID</th>
               <th>Name</th>
@@ -603,17 +595,14 @@ th{
               <th>Registered</th>
               <th>Wallet</th>
             </tr>
-
           </thead>
 
           <tbody id="usersBody">
 
             <tr>
-
               <td colspan="6" class="empty">
                 Loading users...
               </td>
-
             </tr>
 
           </tbody>
@@ -629,7 +618,6 @@ th{
 </div>
 
 
-<!-- WALLET MODAL -->
 <div class="modal" id="walletModal">
 
   <div class="modal-box">
@@ -638,10 +626,8 @@ th{
 
       <h2>Wallet Management</h2>
 
-      <button
-        class="close"
-        onclick="closeWalletModal()"
-      >
+      <button class="close"
+        onclick="closeWalletModal()">
         ×
       </button>
 
@@ -653,10 +639,8 @@ th{
         User
       </div>
 
-      <div
-        id="walletUserName"
-        style="font-weight:700;margin-top:3px;"
-      >
+      <div id="walletUserName"
+        style="font-weight:700;margin-top:3px;">
         -
       </div>
 
@@ -664,23 +648,16 @@ th{
         Current Balance
       </div>
 
-      <div
-        class="current-balance"
-        id="walletCurrentBalance"
-      >
+      <div class="current-balance"
+        id="walletCurrentBalance">
         ₹0
       </div>
 
     </div>
 
-
     <form id="walletForm">
 
-      <input
-        type="hidden"
-        id="walletUserId"
-      >
-
+      <input type="hidden" id="walletUserId">
 
       <div class="form-group">
 
@@ -700,7 +677,6 @@ th{
 
       </div>
 
-
       <div class="form-group">
 
         <label>Amount</label>
@@ -716,7 +692,6 @@ th{
 
       </div>
 
-
       <div class="form-group">
 
         <label>Reason</label>
@@ -730,11 +705,8 @@ th{
 
       </div>
 
-
-      <button
-        class="save-btn"
-        type="submit"
-      >
+      <button class="save-btn"
+        type="submit">
         Save Wallet Adjustment
       </button>
 
@@ -752,6 +724,37 @@ const $ = (id) =>
 
 
 /* =========================================================
+   ERROR DISPLAY
+========================================================= */
+
+function showError(message){
+
+  const box = $("errorBox");
+
+  if(!box) return;
+
+  box.textContent =
+    message || "Something went wrong.";
+
+  box.classList.add("show");
+
+}
+
+
+function hideError(){
+
+  const box = $("errorBox");
+
+  if(!box) return;
+
+  box.textContent = "";
+
+  box.classList.remove("show");
+
+}
+
+
+/* =========================================================
    API HELPER
 ========================================================= */
 
@@ -765,30 +768,67 @@ async function api(url, options = {}) {
 
   });
 
-  let data;
+  let data = null;
 
-  try {
+  const contentType =
+    response.headers.get("content-type") || "";
 
-    data = await response.json();
+  if(
+    contentType.includes("application/json")
+  ){
 
-  } catch {
+    try{
 
-    throw new Error(
-      "Invalid server response."
-    );
+      data = await response.json();
+
+    }catch{
+
+      const error =
+        new Error("Invalid JSON response.");
+
+      error.status =
+        response.status;
+
+      throw error;
+
+    }
+
+  }else{
+
+    const text =
+      await response.text();
+
+    const error =
+      new Error(
+        text ||
+        "Invalid server response."
+      );
+
+    error.status =
+      response.status;
+
+    throw error;
 
   }
 
-  if (!response.ok) {
 
-    throw new Error(
-      data.message ||
-      "Request failed."
-    );
+  if(!response.ok){
+
+    const error =
+      new Error(
+        data?.message ||
+        "Request failed."
+      );
+
+    error.status =
+      response.status;
+
+    throw error;
 
   }
 
   return data;
+
 }
 
 
@@ -796,27 +836,27 @@ async function api(url, options = {}) {
    FORMAT
 ========================================================= */
 
-function money(value) {
+function money(value){
 
   const amount =
     Number(value || 0);
 
   return "₹" +
-    amount.toLocaleString("en-IN", {
-      maximumFractionDigits: 2
+    amount.toLocaleString("en-IN",{
+      maximumFractionDigits:2
     });
 
 }
 
 
-function escapeHtml(value) {
+function escapeHtml(value){
 
   return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 
 }
 
@@ -825,28 +865,52 @@ function escapeHtml(value) {
    ADMIN CHECK
 ========================================================= */
 
-async function checkAdmin() {
+async function checkAdmin(){
 
-  try {
+  hideError();
+
+  try{
 
     const result =
       await api("/api/admin/me");
 
-    if (!result.success) {
+    if(
+      result &&
+      result.success === true &&
+      result.isAdmin === true
+    ){
 
-      location.href =
-        "/admin.html";
-
-      return false;
+      return true;
 
     }
 
-    return true;
+    showError(
+      "Admin session is not active. Please login again."
+    );
 
-  } catch (error) {
+    return false;
 
-    location.href =
-      "/admin.html";
+  }catch(error){
+
+    console.error(
+      "ADMIN CHECK ERROR:",
+      error
+    );
+
+    if(error.status === 401){
+
+      showError(
+        "Admin session expired. Please login again."
+      );
+
+    }else{
+
+      showError(
+        error.message ||
+        "Unable to verify admin session."
+      );
+
+    }
 
     return false;
 
@@ -859,7 +923,7 @@ async function checkAdmin() {
    SUMMARY
 ========================================================= */
 
-async function loadSummary() {
+async function loadSummary(){
 
   const result =
     await api("/api/admin/summary");
@@ -871,36 +935,37 @@ async function loadSummary() {
 
   $("totalUsers").textContent =
     Number(
-      data.total_users ||
-      data.totalUsers ||
+      data.total_users ??
+      data.totalUsers ??
       0
     );
 
   $("totalBalance").textContent =
     money(
-      data.total_balance ||
-      data.totalBalance ||
+      data.total_balance ??
+      data.totalBalance ??
       0
     );
 
   $("totalWithdrawn").textContent =
     money(
-      data.total_withdrawals ||
-      data.totalWithdrawals ||
+      data.total_withdrawals ??
+      data.totalWithdrawn ??
+      data.totalWithdrawals ??
       0
     );
 
   const pending =
     Number(
-      data.pending_withdrawals ||
-      data.pending ||
+      data.pending_withdrawals ??
+      data.pending ??
       0
     );
 
   const processing =
     Number(
-      data.processing_withdrawals ||
-      data.processing ||
+      data.processing_withdrawals ??
+      data.processing ??
       0
     );
 
@@ -909,8 +974,8 @@ async function loadSummary() {
 
   $("totalPayments").textContent =
     money(
-      data.total_payments ||
-      data.totalPayments ||
+      data.total_payments ??
+      data.totalPayments ??
       0
     );
 
@@ -921,7 +986,7 @@ async function loadSummary() {
    USERS
 ========================================================= */
 
-async function loadUsers() {
+async function loadUsers(){
 
   const result =
     await api("/api/admin/users");
@@ -936,18 +1001,17 @@ async function loadUsers() {
         );
 
   renderUsers(users);
-
   renderWalletUsers(users);
 
 }
 
 
-function renderUsers(users) {
+function renderUsers(users){
 
   const body =
     $("usersBody");
 
-  if (!users.length) {
+  if(!users.length){
 
     body.innerHTML = `
       <tr>
@@ -986,9 +1050,7 @@ function renderUsers(users) {
       return `
         <tr>
 
-          <td>
-            ${escapeHtml(id)}
-          </td>
+          <td>${escapeHtml(id)}</td>
 
           <td>
             <strong>
@@ -1034,12 +1096,12 @@ function renderUsers(users) {
 }
 
 
-function renderWalletUsers(users) {
+function renderWalletUsers(users){
 
   const body =
     $("walletUsersBody");
 
-  if (!users.length) {
+  if(!users.length){
 
     body.innerHTML = `
       <tr>
@@ -1078,9 +1140,7 @@ function renderWalletUsers(users) {
       return `
         <tr>
 
-          <td>
-            ${escapeHtml(id)}
-          </td>
+          <td>${escapeHtml(id)}</td>
 
           <td>
             <strong>
@@ -1130,7 +1190,7 @@ function renderWalletUsers(users) {
    WALLET MODAL
 ========================================================= */
 
-function openWalletModal(user) {
+function openWalletModal(user){
 
   $("walletUserId").value =
     String(user.id);
@@ -1150,12 +1210,13 @@ function openWalletModal(user) {
   $("adjustmentReason").value =
     "";
 
-  $("walletModal").classList.add("show");
+  $("walletModal")
+    .classList.add("show");
 
 }
 
 
-function closeWalletModal() {
+function closeWalletModal(){
 
   $("walletModal")
     .classList.remove("show");
@@ -1165,9 +1226,9 @@ function closeWalletModal() {
 
 $("walletModal").addEventListener(
   "click",
-  function(event) {
+  function(event){
 
-    if (event.target === this) {
+    if(event.target === this){
 
       closeWalletModal();
 
@@ -1178,12 +1239,12 @@ $("walletModal").addEventListener(
 
 
 /* =========================================================
-   SAVE BALANCE ADJUSTMENT
+   SAVE BALANCE
 ========================================================= */
 
 $("walletForm").addEventListener(
   "submit",
-  async function(event) {
+  async function(event){
 
     event.preventDefault();
 
@@ -1205,26 +1266,23 @@ $("walletForm").addEventListener(
         .value
         .trim();
 
-    if (!userId) {
+    if(!userId){
 
       alert("Invalid user.");
-
       return;
 
     }
 
-    if (!amount || amount <= 0) {
+    if(!amount || amount <= 0){
 
       alert("Enter a valid amount.");
-
       return;
 
     }
 
-    if (!reason) {
+    if(!reason){
 
       alert("Enter a reason.");
-
       return;
 
     }
@@ -1233,24 +1291,22 @@ $("walletForm").addEventListener(
       this.querySelector(".save-btn");
 
     button.disabled = true;
+    button.textContent = "Saving...";
 
-    button.textContent =
-      "Saving...";
-
-    try {
+    try{
 
       const result =
         await api(
           `/api/admin/users/${encodeURIComponent(userId)}/balance`,
           {
-            method: "POST",
+            method:"POST",
 
-            headers: {
+            headers:{
               "Content-Type":
                 "application/json"
             },
 
-            body: JSON.stringify({
+            body:JSON.stringify({
               amount,
               type,
               reason
@@ -1258,7 +1314,7 @@ $("walletForm").addEventListener(
           }
         );
 
-      if (!result.success) {
+      if(!result.success){
 
         throw new Error(
           result.message ||
@@ -1277,17 +1333,26 @@ $("walletForm").addEventListener(
 
       await refreshAll();
 
-    } catch (error) {
+    }catch(error){
 
-      alert(
-        error.message ||
-        "Unable to update balance."
-      );
+      if(error.status === 401){
 
-    } finally {
+        showError(
+          "Admin session expired. Please login again."
+        );
+
+      }else{
+
+        alert(
+          error.message ||
+          "Unable to update balance."
+        );
+
+      }
+
+    }finally{
 
       button.disabled = false;
-
       button.textContent =
         "Save Wallet Adjustment";
 
@@ -1301,12 +1366,10 @@ $("walletForm").addEventListener(
    WITHDRAWALS
 ========================================================= */
 
-async function loadWithdrawals() {
+async function loadWithdrawals(){
 
   const result =
-    await api(
-      "/api/admin/withdrawals"
-    );
+    await api("/api/admin/withdrawals");
 
   const withdrawals =
     Array.isArray(result)
@@ -1324,38 +1387,31 @@ async function loadWithdrawals() {
 }
 
 
-function statusLabel(status) {
+function statusLabel(status){
 
   const map = {
 
-    pending:
-      "Pending",
+    pending:"Pending",
 
-    processing:
-      "Processing",
+    processing:"Processing",
 
-    completed:
-      "Complete",
+    completed:"Complete",
 
-    rejected:
-      "Rejected"
+    rejected:"Rejected"
 
   };
 
-  return map[status] ||
-    status;
+  return map[status] || status;
 
 }
 
 
-function renderWithdrawals(
-  withdrawals
-) {
+function renderWithdrawals(withdrawals){
 
   const body =
     $("withdrawalsBody");
 
-  if (!withdrawals.length) {
+  if(!withdrawals.length){
 
     body.innerHTML = `
       <tr>
@@ -1372,12 +1428,6 @@ function renderWithdrawals(
   body.innerHTML =
     withdrawals.map(w => {
 
-      /*
-        IMPORTANT:
-        MongoDB withdrawal ID is ObjectId.
-        Never convert it using Number().
-      */
-
       const withdrawalId =
         String(w.id || "");
 
@@ -1389,10 +1439,7 @@ function renderWithdrawals(
 
       let actions = "";
 
-
-      /* PENDING */
-
-      if (status === "pending") {
+      if(status === "pending"){
 
         actions = `
 
@@ -1412,14 +1459,7 @@ function renderWithdrawals(
 
         `;
 
-      }
-
-
-      /* PROCESSING */
-
-      else if (
-        status === "processing"
-      ) {
+      }else if(status === "processing"){
 
         actions = `
 
@@ -1432,12 +1472,7 @@ function renderWithdrawals(
 
         `;
 
-      }
-
-
-      /* COMPLETED / REJECTED */
-
-      else {
+      }else{
 
         actions = `
 
@@ -1451,20 +1486,24 @@ function renderWithdrawals(
 
       }
 
-
       const userName =
         w.user_name ||
         w.name ||
         w.phone ||
+        (
+          w.user &&
+          (
+            w.user.name ||
+            w.user.phone
+          )
+        ) ||
         (
           "User #" +
           (w.user_id || "-")
         );
 
       const amount =
-        Number(
-          w.amount || 0
-        );
+        Number(w.amount || 0);
 
       const method =
         w.method ||
@@ -1478,21 +1517,16 @@ function renderWithdrawals(
         w.address ||
         "-";
 
-
       return `
 
         <tr>
 
           <td>
-            #${escapeHtml(
-              withdrawalId
-            )}
+            #${escapeHtml(withdrawalId)}
           </td>
 
           <td>
-            ${escapeHtml(
-              userName
-            )}
+            ${escapeHtml(userName)}
           </td>
 
           <td class="balance">
@@ -1500,15 +1534,11 @@ function renderWithdrawals(
           </td>
 
           <td>
-            ${escapeHtml(
-              method
-            )}
+            ${escapeHtml(method)}
           </td>
 
           <td>
-            ${escapeHtml(
-              destination
-            )}
+            ${escapeHtml(destination)}
           </td>
 
           <td>
@@ -1549,45 +1579,42 @@ function renderWithdrawals(
 
 
 /* =========================================================
-   PROCESS WITHDRAWAL
+   PROCESS
 ========================================================= */
 
-async function setProcessing(id) {
+async function setProcessing(id){
 
   const withdrawalId =
     String(id || "").trim();
 
-  if (!withdrawalId) {
+  if(!withdrawalId){
 
-    alert(
-      "Invalid withdrawal ID."
-    );
-
+    alert("Invalid withdrawal ID.");
     return;
 
   }
 
-  if (
+  if(
     !confirm(
       "Move this withdrawal to Processing?"
     )
-  ) {
+  ){
 
     return;
 
   }
 
-  try {
+  try{
 
     const result =
       await api(
         `/api/admin/withdrawals/${encodeURIComponent(withdrawalId)}/processing`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
-    if (!result.success) {
+    if(!result.success){
 
       throw new Error(
         result.message ||
@@ -1602,12 +1629,22 @@ async function setProcessing(id) {
 
     await refreshAll();
 
-  } catch (error) {
+  }catch(error){
 
-    alert(
-      error.message ||
-      "Processing failed."
-    );
+    if(error.status === 401){
+
+      showError(
+        "Admin session expired. Please login again."
+      );
+
+    }else{
+
+      alert(
+        error.message ||
+        "Processing failed."
+      );
+
+    }
 
   }
 
@@ -1615,20 +1652,17 @@ async function setProcessing(id) {
 
 
 /* =========================================================
-   COMPLETE WITHDRAWAL
+   COMPLETE
 ========================================================= */
 
-async function completeWithdrawal(id) {
+async function completeWithdrawal(id){
 
   const withdrawalId =
     String(id || "").trim();
 
-  if (!withdrawalId) {
+  if(!withdrawalId){
 
-    alert(
-      "Invalid withdrawal ID."
-    );
-
+    alert("Invalid withdrawal ID.");
     return;
 
   }
@@ -1639,23 +1673,23 @@ async function completeWithdrawal(id) {
       "Do you want to mark this withdrawal as Complete?"
     );
 
-  if (!confirmed) {
+  if(!confirmed){
 
     return;
 
   }
 
-  try {
+  try{
 
     const result =
       await api(
         `/api/admin/withdrawals/${encodeURIComponent(withdrawalId)}/complete`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
-    if (!result.success) {
+    if(!result.success){
 
       throw new Error(
         result.message ||
@@ -1670,12 +1704,22 @@ async function completeWithdrawal(id) {
 
     await refreshAll();
 
-  } catch (error) {
+  }catch(error){
 
-    alert(
-      error.message ||
-      "Complete failed."
-    );
+    if(error.status === 401){
+
+      showError(
+        "Admin session expired. Please login again."
+      );
+
+    }else{
+
+      alert(
+        error.message ||
+        "Complete failed."
+      );
+
+    }
 
   }
 
@@ -1683,20 +1727,17 @@ async function completeWithdrawal(id) {
 
 
 /* =========================================================
-   REJECT WITHDRAWAL
+   REJECT
 ========================================================= */
 
-async function rejectWithdrawal(id) {
+async function rejectWithdrawal(id){
 
   const withdrawalId =
     String(id || "").trim();
 
-  if (!withdrawalId) {
+  if(!withdrawalId){
 
-    alert(
-      "Invalid withdrawal ID."
-    );
-
+    alert("Invalid withdrawal ID.");
     return;
 
   }
@@ -1707,23 +1748,23 @@ async function rejectWithdrawal(id) {
       "The reserved amount will be refunded to the user's wallet."
     );
 
-  if (!confirmed) {
+  if(!confirmed){
 
     return;
 
   }
 
-  try {
+  try{
 
     const result =
       await api(
         `/api/admin/withdrawals/${encodeURIComponent(withdrawalId)}/reject`,
         {
-          method: "POST"
+          method:"POST"
         }
       );
 
-    if (!result.success) {
+    if(!result.success){
 
       throw new Error(
         result.message ||
@@ -1738,12 +1779,22 @@ async function rejectWithdrawal(id) {
 
     await refreshAll();
 
-  } catch (error) {
+  }catch(error){
 
-    alert(
-      error.message ||
-      "Reject failed."
-    );
+    if(error.status === 401){
+
+      showError(
+        "Admin session expired. Please login again."
+      );
+
+    }else{
+
+      alert(
+        error.message ||
+        "Reject failed."
+      );
+
+    }
 
   }
 
@@ -1751,34 +1802,56 @@ async function rejectWithdrawal(id) {
 
 
 /* =========================================================
-   REFRESH EVERYTHING
+   REFRESH
 ========================================================= */
 
-async function refreshAll() {
+let refreshRunning = false;
 
-  try {
+async function refreshAll(){
+
+  if(refreshRunning){
+
+    return;
+
+  }
+
+  refreshRunning = true;
+
+  hideError();
+
+  try{
 
     await Promise.all([
-
       loadSummary(),
-
       loadUsers(),
-
       loadWithdrawals()
-
     ]);
 
-  } catch (error) {
+  }catch(error){
 
     console.error(
       "REFRESH ERROR:",
       error
     );
 
-    alert(
+    if(error.status === 401){
+
+      showError(
+        "Admin session expired. Please login again."
+      );
+
+      return;
+
+    }
+
+    showError(
       error.message ||
       "Unable to refresh dashboard."
     );
+
+  }finally{
+
+    refreshRunning = false;
 
   }
 
@@ -1789,21 +1862,16 @@ async function refreshAll() {
    SCROLL
 ========================================================= */
 
-function scrollToSection(id) {
+function scrollToSection(id){
 
   const element =
     document.getElementById(id);
 
-  if (element) {
+  if(element){
 
     element.scrollIntoView({
-
-      behavior:
-        "smooth",
-
-      block:
-        "start"
-
+      behavior:"smooth",
+      block:"start"
     });
 
   }
@@ -1815,23 +1883,25 @@ function scrollToSection(id) {
    LOGOUT
 ========================================================= */
 
-async function logoutAdmin() {
+async function logoutAdmin(){
 
-  try {
+  try{
 
     await api(
       "/api/admin/logout",
       {
-        method:
-          "POST"
+        method:"POST"
       }
     );
 
-  } catch (error) {
+  }catch(error){
 
-    console.error(error);
+    console.error(
+      "LOGOUT ERROR:",
+      error
+    );
 
-  } finally {
+  }finally{
 
     location.href =
       "/admin.html";
@@ -1845,12 +1915,12 @@ async function logoutAdmin() {
    START
 ========================================================= */
 
-(async function() {
+(async function(){
 
   const isAdmin =
     await checkAdmin();
 
-  if (!isAdmin) {
+  if(!isAdmin){
 
     return;
 
@@ -1861,23 +1931,23 @@ async function logoutAdmin() {
 })();
 
 
-/* AUTO REFRESH */
+/* =========================================================
+   AUTO REFRESH
+========================================================= */
 
 setInterval(
-  async () => {
+  async function(){
 
-    try {
+    const isAdmin =
+      await checkAdmin();
 
-      await refreshAll();
+    if(!isAdmin){
 
-    } catch(error) {
-
-      console.error(
-        "AUTO REFRESH ERROR:",
-        error
-      );
+      return;
 
     }
+
+    await refreshAll();
 
   },
   30000
