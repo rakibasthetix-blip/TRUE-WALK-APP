@@ -125,6 +125,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
       index: true
+    },
+
+    // =================================================
+    // BAN STATUS
+    // =================================================
+
+    banned: {
+      type: Boolean,
+      default: false,
+      index: true
     }
   },
   {
@@ -518,6 +528,37 @@ async function login(
 
     }
 
+    const user =
+      await User.findById(
+        req.session.userId
+      );
+
+    if (!user) {
+
+      req.session.destroy(() => {});
+
+      return res.status(401).json({
+        success: false,
+        message: 'User account not found.'
+      });
+
+    }
+
+    // ===============================================
+    // BLOCK BANNED USERS EVEN IF OLD SESSION EXISTS
+    // ===============================================
+
+    if (user.banned === true) {
+
+      req.session.destroy(() => {});
+
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been banned.'
+      });
+
+    }
+
     next();
 
   } catch (error) {
@@ -559,28 +600,6 @@ function admin(
 
 // =====================================================
 // SESSION
-// FIXED FOR RENDER + MONGODB SESSION
-// ===========================================
-
-// =====================================================
-// HOME PROTECTION
-// =====================================================
-
-app.get(
-  '/home.html',
-  (req, res, next) => {
-
-    if (!req.session.userId) {
-      return res.redirect('/login.html');
-    }
-
-    next();
-  }
-);
-
-// =====================================================
-// SESSION
-// FINAL FIX FOR RENDER + MONGODB SESSION
 // =====================================================
 
 const isProduction =
@@ -622,6 +641,35 @@ app.use(
 
   })
 );
+
+// =====================================================
+// HOME PROTECTION
+// MUST BE AFTER SESSION MIDDLEWARE
+// =====================================================
+
+app.get(
+  '/home.html',
+  (req, res, next) => {
+
+    if (
+      !req.session ||
+      !req.session.userId
+    ) {
+
+      return res.redirect(
+        '/login.html'
+      );
+
+    }
+
+    next();
+
+  }
+);
+
+// =====================================================
+// ADMIN LOGIN
+// =====================================================
 
 app.post(
   '/api/admin/login',
@@ -665,9 +713,6 @@ app.post(
 
       }
 
-      // IMPORTANT:
-      // Create a completely fresh session
-      // after successful admin authentication.
       req.session.regenerate(
         (regenerateError) => {
 
@@ -690,9 +735,6 @@ app.post(
 
           req.session.isAdmin = true;
 
-          // IMPORTANT:
-          // Wait until MongoDB session store
-          // confirms the session is saved.
           req.session.save(
             (saveError) => {
 
@@ -767,7 +809,18 @@ app.post(
   '/api/admin/logout',
   (req, res) => {
 
+    if (!req.session) {
+
+      return res.json({
+        success: true,
+        message:
+          'Admin logged out.'
+      });
+
+    }
+
     req.session.isAdmin = false;
+    req.session.userId = null;
 
     req.session.save((error) => {
 
@@ -932,7 +985,10 @@ app.post(
           referral_code:
             referralCode,
           referred_by:
-            referredBy
+            referredBy,
+
+          // New users are active by default
+          banned: false
         });
 
       await Wallet.create({
@@ -943,6 +999,9 @@ app.post(
 
       req.session.userId =
         user._id.toString();
+
+      req.session.isAdmin =
+        false;
 
       return res.json({
         success: true,
@@ -1011,6 +1070,20 @@ app.post(
           success: false,
           message:
             'Invalid phone or password.'
+        });
+
+      }
+
+      // =================================================
+      // BANNED USER BLOCK
+      // =================================================
+
+      if (user.banned === true) {
+
+        return res.status(403).json({
+          success: false,
+          message:
+            'Your account has been banned.'
         });
 
       }
@@ -2372,7 +2445,7 @@ app.get(
       const users =
         await User.find()
           .select(
-            'name phone referral_code referred_by'
+            'name phone referral_code referred_by banned'
           )
           .sort({
             _id: -1
@@ -2409,7 +2482,11 @@ app.get(
           balance:
             Number(
               wallet?.balance || 0
-            ) / 100
+            ) / 100,
+
+          // New status for dashboard
+          banned:
+            user.banned === true
 
         });
 
@@ -2432,6 +2509,304 @@ app.get(
         success: false,
         message:
           'Unable to load users.'
+      });
+
+    }
+
+  }
+);
+
+// =====================================================
+// ADMIN BAN USER
+// =====================================================
+
+app.post(
+  '/api/admin/users/:userId/ban',
+  admin,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        req.params.userId;
+
+      if (
+        !mongoose.isValidObjectId(
+          userId
+        )
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user ID.'
+        });
+
+      }
+
+      const user =
+        await User.findById(
+          userId
+        );
+
+      if (!user) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            'User not found.'
+        });
+
+      }
+
+      if (user.banned === true) {
+
+        return res.json({
+          success: true,
+          message:
+            'User is already banned.'
+        });
+
+      }
+
+      user.banned = true;
+
+      await user.save();
+
+      return res.json({
+        success: true,
+        message:
+          'User banned successfully.'
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Admin ban user error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to ban user.'
+      });
+
+    }
+
+  }
+);
+
+// =====================================================
+// ADMIN UNBAN USER
+// =====================================================
+
+app.post(
+  '/api/admin/users/:userId/unban',
+  admin,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        req.params.userId;
+
+      if (
+        !mongoose.isValidObjectId(
+          userId
+        )
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user ID.'
+        });
+
+      }
+
+      const user =
+        await User.findById(
+          userId
+        );
+
+      if (!user) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            'User not found.'
+        });
+
+      }
+
+      if (user.banned !== true) {
+
+        return res.json({
+          success: true,
+          message:
+            'User is already active.'
+        });
+
+      }
+
+      user.banned = false;
+
+      await user.save();
+
+      return res.json({
+        success: true,
+        message:
+          'User unbanned successfully.'
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Admin unban user error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to unban user.'
+      });
+
+    }
+
+  }
+);
+
+// =====================================================
+// ADMIN LOGIN AS USER
+// =====================================================
+
+app.post(
+  '/api/admin/users/:userId/login-as',
+  admin,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        req.params.userId;
+
+      if (
+        !mongoose.isValidObjectId(
+          userId
+        )
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user ID.'
+        });
+
+      }
+
+      const user =
+        await User.findById(
+          userId
+        );
+
+      if (!user) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            'User not found.'
+        });
+
+      }
+
+      // Do not allow login into a banned account
+      if (user.banned === true) {
+
+        return res.status(403).json({
+          success: false,
+          message:
+            'This user is banned. Unban the user first.'
+        });
+
+      }
+
+      // ===============================================
+      // CREATE A FRESH SESSION
+      // Admin session becomes user session.
+      // isAdmin = false intentionally.
+      // ===============================================
+
+      req.session.regenerate(
+        (regenerateError) => {
+
+          if (regenerateError) {
+
+            console.error(
+              'Login-as session regenerate error:',
+              regenerateError
+            );
+
+            return res.status(500).json({
+              success: false,
+              message:
+                'Unable to create user session.'
+            });
+
+          }
+
+          req.session.userId =
+            user._id.toString();
+
+          req.session.isAdmin =
+            false;
+
+          req.session.save(
+            (saveError) => {
+
+              if (saveError) {
+
+                console.error(
+                  'Login-as session save error:',
+                  saveError
+                );
+
+                return res.status(500).json({
+                  success: false,
+                  message:
+                    'Unable to save user session.'
+                });
+
+              }
+
+              return res.json({
+                success: true,
+
+                message:
+                  'Logged in as user successfully.',
+
+                user:
+                  safeUser(user)
+              });
+
+            }
+          );
+
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Admin login-as-user error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to login as user.'
       });
 
     }
@@ -3321,6 +3696,16 @@ app.get(
 app.post(
   '/api/logout',
   (req, res) => {
+
+    if (!req.session) {
+
+      return res.json({
+        success: true,
+        message:
+          'Logged out successfully.'
+      });
+
+    }
 
     req.session.destroy(
       error => {
