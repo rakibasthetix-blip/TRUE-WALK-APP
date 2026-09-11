@@ -282,12 +282,17 @@
     </a>
 
     <div class="brand">
+
       <img
         src="assets/Logo.png"
         alt="TRUE WALK"
         onerror="this.style.display='none'"
       >
-      <div class="brand-name">TRUE WALK</div>
+
+      <div class="brand-name">
+        TRUE WALK
+      </div>
+
     </div>
 
   </div>
@@ -313,7 +318,10 @@
         Selected Plan
       </div>
 
-      <div class="plan-name" id="planName">
+      <div
+        class="plan-name"
+        id="planName"
+      >
         Loading...
       </div>
 
@@ -323,7 +331,10 @@
           Deposit Amount
         </div>
 
-        <div class="amount" id="amount">
+        <div
+          class="amount"
+          id="amount"
+        >
           ₹0
         </div>
 
@@ -383,36 +394,52 @@
 
 <script>
 
-  /* ================================
+  /* =====================================================
      GET PLAN DETAILS
-     ================================ */
+     ===================================================== */
 
   const params =
-    new URLSearchParams(window.location.search);
+    new URLSearchParams(
+      window.location.search
+    );
 
   const planNameFromUrl =
     params.get("plan") || "";
 
   const amountFromUrl =
-    Number(params.get("amount") || 0);
+    Number(
+      params.get("amount") || 0
+    );
 
+
+  /* =====================================================
+     ELEMENTS
+     ===================================================== */
 
   const planNameElement =
-    document.getElementById("planName");
+    document.getElementById(
+      "planName"
+    );
 
   const amountElement =
-    document.getElementById("amount");
+    document.getElementById(
+      "amount"
+    );
 
   const payBtn =
-    document.getElementById("payBtn");
+    document.getElementById(
+      "payBtn"
+    );
 
   const errorBox =
-    document.getElementById("errorBox");
+    document.getElementById(
+      "errorBox"
+    );
 
 
-  /* ================================
+  /* =====================================================
      FORMAT INR
-     ================================ */
+     ===================================================== */
 
   function formatAmount(value) {
 
@@ -428,35 +455,43 @@
   }
 
 
-  /* ================================
+  /* =====================================================
      ERROR
-     ================================ */
+     ===================================================== */
 
   function showError(message) {
 
-    errorBox.textContent = message;
+    errorBox.textContent =
+      message;
 
-    errorBox.classList.add("show");
+    errorBox.classList.add(
+      "show"
+    );
 
   }
 
 
   function hideError() {
 
-    errorBox.textContent = "";
+    errorBox.textContent =
+      "";
 
-    errorBox.classList.remove("show");
+    errorBox.classList.remove(
+      "show"
+    );
 
   }
 
 
-  /* ================================
+  /* =====================================================
      VALIDATE PLAN
-     ================================ */
+     ===================================================== */
 
   if (
     !planNameFromUrl ||
-    !Number.isFinite(amountFromUrl) ||
+    !Number.isFinite(
+      amountFromUrl
+    ) ||
     amountFromUrl < 200
   ) {
 
@@ -466,7 +501,8 @@
     amountElement.textContent =
       "₹0";
 
-    payBtn.disabled = true;
+    payBtn.disabled =
+      true;
 
     showError(
       "Invalid plan or amount. Please go back and select a valid plan."
@@ -478,27 +514,33 @@
       planNameFromUrl;
 
     amountElement.textContent =
-      formatAmount(amountFromUrl);
+      formatAmount(
+        amountFromUrl
+      );
 
   }
 
 
-  /* ================================
+  /* =====================================================
      LOADING
-     ================================ */
+     ===================================================== */
 
-  function setLoading(loading) {
+  function setLoading(
+    loading
+  ) {
 
     if (loading) {
 
-      payBtn.disabled = true;
+      payBtn.disabled =
+        true;
 
       payBtn.innerHTML =
         '<span class="spinner"></span>Opening Secure Payment...';
 
     } else {
 
-      payBtn.disabled = false;
+      payBtn.disabled =
+        false;
 
       payBtn.textContent =
         "Pay with UPI";
@@ -508,17 +550,22 @@
   }
 
 
-  /* ================================
-     CREATE RSPAY PAYMENT
-     ================================ */
+  /* =====================================================
+     DIRECT RSPAY REDIRECT
+     ===================================================== */
 
-  async function createPayment() {
+  function createPayment() {
 
     hideError();
 
+
+    /* Validate amount */
+
     if (
       !planNameFromUrl ||
-      !Number.isFinite(amountFromUrl) ||
+      !Number.isFinite(
+        amountFromUrl
+      ) ||
       amountFromUrl < 200
     ) {
 
@@ -534,122 +581,40 @@
     setLoading(true);
 
 
-    try {
+    /*
+     * IMPORTANT:
+     *
+     * We are NOT using fetch() here.
+     *
+     * The browser directly opens our
+     * backend payment route.
+     *
+     * server.js creates the RSPay order
+     * and redirects the browser directly
+     * to the RSPay payment page.
+     */
 
-      /*
-       * IMPORTANT:
-       * Secret RSPay credentials stay on server.js.
-       *
-       * Frontend only sends:
-       * plan + amount
-       */
-
-      const response =
-        await fetch(
-          "/api/payment/create-order",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json"
-            },
-
-            credentials: "same-origin",
-
-            body: JSON.stringify({
-
-              plan:
-                planNameFromUrl,
-
-              amount:
-                amountFromUrl
-
-            })
-          }
-        );
-
-
-      let data;
-
-      try {
-
-        data =
-          await response.json();
-
-      } catch {
-
-        throw new Error(
-          "Server returned an invalid response."
-        );
-
-      }
-
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-
-        throw new Error(
-          data.message ||
-          "Unable to create payment."
-        );
-
-      }
-
-
-      /*
-       * server.js should return:
-       *
-       * {
-       *   success: true,
-       *   payUrl: "https://..."
-       * }
-       */
-
-      const payUrl =
-        data.payUrl ||
-        data.paymentUrl ||
-        data.url;
-
-
-      if (!payUrl) {
-
-        throw new Error(
-          "Payment URL was not returned by server."
-        );
-
-      }
-
-
-      /* Redirect to RSPay payment page */
-
-      window.location.href =
-        payUrl;
-
-
-    } catch (error) {
-
-      console.error(
-        "RSPay payment error:",
-        error
+    const paymentUrl =
+      "/api/payment/go" +
+      "?plan=" +
+      encodeURIComponent(
+        planNameFromUrl
+      ) +
+      "&amount=" +
+      encodeURIComponent(
+        amountFromUrl
       );
 
-      showError(
-        error.message ||
-        "Unable to create payment. Please try again."
-      );
 
-      setLoading(false);
-
-    }
+    window.location.href =
+      paymentUrl;
 
   }
 
 
-  /* ================================
+  /* =====================================================
      PAY BUTTON
-     ================================ */
+     ===================================================== */
 
   payBtn.addEventListener(
     "click",
