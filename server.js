@@ -21,7 +21,6 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 // =====================================================
 // ENVIRONMENT
 // =====================================================
@@ -39,7 +38,6 @@ const ADMIN_USERNAME =
 
 const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD || '';
-
 
 // =====================================================
 // RS PAYMENT CONFIG
@@ -74,7 +72,6 @@ const RSPAY_RETURN_URL =
     ? `${APP_URL}/home.html`
     : '');
 
-
 // =====================================================
 // MONGODB CHECK
 // =====================================================
@@ -86,7 +83,6 @@ if (!MONGO_URI) {
 
   process.exit(1);
 }
-
 
 // =====================================================
 // USER SCHEMA
@@ -136,7 +132,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-
 // =====================================================
 // WALLET SCHEMA
 // Amount is stored in PAISE
@@ -163,7 +158,6 @@ const walletSchema = new mongoose.Schema(
     }
   }
 );
-
 
 // =====================================================
 // WALLET TRANSACTION
@@ -216,8 +210,6 @@ const walletTransactionSchema =
     }
   );
 
-
-// Prevent duplicate wallet transaction
 walletTransactionSchema.index(
   {
     reference_type: 1,
@@ -229,7 +221,6 @@ walletTransactionSchema.index(
     sparse: true
   }
 );
-
 
 // =====================================================
 // PAYMENT SCHEMA
@@ -261,7 +252,6 @@ const paymentSchema =
         default: 'INR'
       },
 
-      // RS Payment merchant order ID
       merchant_order_id: {
         type: String,
         unique: true,
@@ -269,13 +259,11 @@ const paymentSchema =
         index: true
       },
 
-      // RS Payment platform order ID
       platform_order_id: {
         type: String,
         default: null
       },
 
-      // Payment page URL
       pay_url: {
         type: String,
         default: null
@@ -298,7 +286,6 @@ const paymentSchema =
       }
     }
   );
-
 
 // =====================================================
 // WITHDRAWAL SCHEMA
@@ -368,7 +355,6 @@ const withdrawalSchema =
     }
   );
 
-
 // =====================================================
 // MODELS
 // =====================================================
@@ -402,7 +388,6 @@ const Withdrawal =
     withdrawalSchema
   );
 
-
 // =====================================================
 // PASSWORD HELPERS
 // =====================================================
@@ -412,7 +397,6 @@ function createSalt() {
     .randomBytes(16)
     .toString('hex');
 }
-
 
 function hashPassword(
   password,
@@ -426,7 +410,6 @@ function hashPassword(
     )
     .toString('hex');
 }
-
 
 function verifyPassword(
   password,
@@ -445,7 +428,6 @@ function verifyPassword(
   );
 }
 
-
 // =====================================================
 // RANDOM REFERENCE
 // =====================================================
@@ -462,21 +444,19 @@ function makeRef(prefix = 'TW') {
   );
 }
 
-
 // =====================================================
 // WALLET HELPER
 // =====================================================
 
 async function ensureWallet(
   userId,
-  session = null
+  mongoSession = null
 ) {
 
   let wallet =
     await Wallet.findOne({
       user_id: userId
-    }).session(session);
-
+    }).session(mongoSession);
 
   if (!wallet) {
 
@@ -489,18 +469,16 @@ async function ensureWallet(
             updated_at: new Date()
           }
         ],
-        session
-          ? { session }
+        mongoSession
+          ? { session: mongoSession }
           : undefined
       );
 
     wallet = created[0];
   }
 
-
   return wallet;
 }
-
 
 // =====================================================
 // SAFE USER
@@ -520,7 +498,6 @@ function safeUser(user) {
     referred_by: user.referred_by
   };
 }
-
 
 // =====================================================
 // LOGIN MIDDLEWARE
@@ -560,7 +537,6 @@ async function login(
   }
 }
 
-
 // =====================================================
 // ADMIN MIDDLEWARE
 // =====================================================
@@ -582,7 +558,6 @@ function admin(
 
   next();
 }
-
 
 // =====================================================
 // SESSION
@@ -617,7 +592,6 @@ app.use(
   })
 );
 
-
 // =====================================================
 // HOME PROTECTION
 // =====================================================
@@ -634,9 +608,9 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ADMIN LOGIN
+// FIXED: EXPLICIT SESSION SAVE
 // =====================================================
 
 app.post(
@@ -646,81 +620,27 @@ app.post(
     try {
 
       const username =
-        String(req.body.username || '').trim();
+        String(
+          req.body.username || ''
+        ).trim();
 
       const password =
-        String(req.body.password || '');
+        String(
+          req.body.password || ''
+        );
 
-      if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      if (
+        !ADMIN_USERNAME ||
+        !ADMIN_PASSWORD
+      ) {
 
         return res.status(500).json({
           success: false,
-          message: 'Admin credentials are not configured.'
+          message:
+            'Admin credentials are not configured.'
         });
 
       }
-
-      if (
-        username !== ADMIN_USERNAME ||
-        password !== ADMIN_PASSWORD
-      ) {
-
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid admin credentials.'
-        });
-
-      }
-
-      // Clear normal user session state
-      req.session.userId = null;
-
-      // Set admin session
-      req.session.isAdmin = true;
-
-      // Explicitly save session before responding.
-      // This prevents redirect/dashboard race conditions
-      // with MongoStore.
-      req.session.save((error) => {
-
-        if (error) {
-
-          console.error(
-            'Admin session save error:',
-            error
-          );
-
-          return res.status(500).json({
-            success: false,
-            message: 'Unable to save admin session.'
-          });
-
-        }
-
-        return res.json({
-          success: true,
-          message: 'Admin login successful.'
-        });
-
-      });
-
-    } catch (error) {
-
-      console.error(
-        'Admin login error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message: 'Admin login failed.'
-      });
-
-    }
-
-  }
-);
-
 
       if (
         username !== ADMIN_USERNAME ||
@@ -735,13 +655,34 @@ app.post(
 
       }
 
-
+      req.session.userId = null;
       req.session.isAdmin = true;
 
+      // IMPORTANT:
+      // Wait until MongoStore saves the session.
+      req.session.save((error) => {
 
-      return res.json({
-        success: true,
-        message: 'Admin login successful.'
+        if (error) {
+
+          console.error(
+            'Admin session save error:',
+            error
+          );
+
+          return res.status(500).json({
+            success: false,
+            message:
+              'Unable to save admin session.'
+          });
+
+        }
+
+        return res.json({
+          success: true,
+          message:
+            'Admin login successful.'
+        });
+
       });
 
     } catch (error) {
@@ -753,14 +694,14 @@ app.post(
 
       return res.status(500).json({
         success: false,
-        message: 'Admin login failed.'
+        message:
+          'Admin login failed.'
       });
 
     }
 
   }
 );
-
 
 // =====================================================
 // ADMIN ME
@@ -779,7 +720,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ADMIN LOGOUT
 // =====================================================
@@ -790,14 +730,33 @@ app.post(
 
     req.session.isAdmin = false;
 
-    res.json({
-      success: true,
-      message: 'Admin logged out.'
+    req.session.save((error) => {
+
+      if (error) {
+
+        console.error(
+          'Admin logout session error:',
+          error
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            'Admin logout failed.'
+        });
+
+      }
+
+      return res.json({
+        success: true,
+        message:
+          'Admin logged out.'
+      });
+
     });
 
   }
 );
-
 
 // =====================================================
 // USER REGISTER
@@ -831,7 +790,6 @@ app.post(
           ''
         ).trim();
 
-
       if (!name) {
 
         return res.status(400).json({
@@ -841,7 +799,6 @@ app.post(
 
       }
 
-
       if (!phone) {
 
         return res.status(400).json({
@@ -850,7 +807,6 @@ app.post(
         });
 
       }
-
 
       if (
         password.length < 6
@@ -863,7 +819,6 @@ app.post(
         });
 
       }
-
 
       const existing =
         await User.findOne({
@@ -880,7 +835,6 @@ app.post(
 
       }
 
-
       const salt =
         createSalt();
 
@@ -889,7 +843,6 @@ app.post(
           password,
           salt
         );
-
 
       let referralCode;
 
@@ -913,7 +866,6 @@ app.post(
 
       }
 
-
       let referredBy = null;
 
       if (referral) {
@@ -931,7 +883,6 @@ app.post(
 
       }
 
-
       const user =
         await User.create({
           name,
@@ -945,17 +896,14 @@ app.post(
             referredBy
         });
 
-
       await Wallet.create({
         user_id: user._id,
         balance: 0,
         updated_at: new Date()
       });
 
-
       req.session.userId =
         user._id.toString();
-
 
       return res.json({
         success: true,
@@ -983,7 +931,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // USER LOGIN
 // =====================================================
@@ -1004,7 +951,6 @@ app.post(
           req.body.password || ''
         );
 
-
       if (!phone || !password) {
 
         return res.status(400).json({
@@ -1015,12 +961,10 @@ app.post(
 
       }
 
-
       const user =
         await User.findOne({
           phone
         });
-
 
       if (!user) {
 
@@ -1032,14 +976,12 @@ app.post(
 
       }
 
-
       const valid =
         verifyPassword(
           password,
           user.salt,
           user.password_hash
         );
-
 
       if (!valid) {
 
@@ -1051,13 +993,11 @@ app.post(
 
       }
 
-
       req.session.userId =
         user._id.toString();
 
       req.session.isAdmin =
         false;
-
 
       return res.json({
         success: true,
@@ -1084,7 +1024,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // USER ME
 // =====================================================
@@ -1110,12 +1049,10 @@ app.get(
 
       }
 
-
       const wallet =
         await ensureWallet(
           user._id
         );
-
 
       return res.json({
         success: true,
@@ -1145,7 +1082,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // WALLET
 // =====================================================
@@ -1161,7 +1097,6 @@ app.get(
         await ensureWallet(
           req.session.userId
         );
-
 
       return res.json({
         success: true,
@@ -1195,7 +1130,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // REFERRAL
 // =====================================================
@@ -1220,7 +1154,6 @@ app.get(
         });
 
       }
-
 
       return res.json({
         success: true,
@@ -1250,7 +1183,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // REFERRALS
 // =====================================================
@@ -1276,7 +1208,6 @@ app.get(
 
       }
 
-
       const referrals =
         await User.find({
           referred_by:
@@ -1288,7 +1219,6 @@ app.get(
         .sort({
           _id: -1
         });
-
 
       return res.json({
         success: true,
@@ -1313,7 +1243,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // RS PAYMENT - CREATE PAYMENT
 // =====================================================
@@ -1333,8 +1262,6 @@ app.post(
           req.body.plan || ''
         ).trim();
 
-
-      // RS Payment minimum = ₹200
       if (
         !Number.isFinite(amount) ||
         amount < 200
@@ -1348,7 +1275,6 @@ app.post(
 
       }
 
-
       if (!RSPAY_MERCHANT_ID) {
 
         return res.status(500).json({
@@ -1358,7 +1284,6 @@ app.post(
         });
 
       }
-
 
       if (
         !RSPAY_WEBHOOK_URL ||
@@ -1373,16 +1298,11 @@ app.post(
 
       }
 
-
-      // Unique order ID
       const merchantOrderId =
         makeRef('TW');
 
-
-      // RS Payment expects amount in INR
       const params =
         new URLSearchParams();
-
 
       params.set(
         'amount',
@@ -1414,7 +1334,6 @@ app.post(
         RSPAY_RETURN_URL
       );
 
-
       console.log(
         'Creating RS Payment:',
         {
@@ -1423,7 +1342,6 @@ app.post(
           amount
         }
       );
-
 
       const response =
         await fetch(
@@ -1438,10 +1356,8 @@ app.post(
           }
         );
 
-
       const responseText =
         await response.text();
-
 
       let result;
 
@@ -1467,7 +1383,6 @@ app.post(
 
       }
 
-
       if (!response.ok) {
 
         console.error(
@@ -1483,7 +1398,6 @@ app.post(
         });
 
       }
-
 
       if (
         !result.status ||
@@ -1505,7 +1419,6 @@ app.post(
 
       }
 
-
       const payment =
         await Payment.create({
 
@@ -1515,7 +1428,6 @@ app.post(
           plan:
             plan || null,
 
-          // Our DB stores paise
           amount:
             Math.round(
               amount * 100
@@ -1543,7 +1455,6 @@ app.post(
 
         });
 
-
       return res.json({
 
         success: true,
@@ -1565,7 +1476,6 @@ app.post(
 
       });
 
-
     } catch (error) {
 
       console.error(
@@ -1584,7 +1494,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // RS PAYMENT - WEBHOOK
 // =====================================================
@@ -1602,12 +1511,10 @@ app.post(
         amount
       } = req.body;
 
-
       console.log(
         'RS Payment webhook received:',
         req.body
       );
-
 
       if (!merchant_order_id) {
 
@@ -1619,8 +1526,6 @@ app.post(
 
       }
 
-
-      // Verify merchant ID
       if (
         String(user_id || '') !==
         String(RSPAY_MERCHANT_ID)
@@ -1639,8 +1544,6 @@ app.post(
 
       }
 
-
-      // Only process successful payment
       if (
         String(status || '')
           .toLowerCase() !==
@@ -1655,12 +1558,10 @@ app.post(
 
       }
 
-
       const payment =
         await Payment.findOne({
           merchant_order_id
         });
-
 
       if (!payment) {
 
@@ -1677,8 +1578,6 @@ app.post(
 
       }
 
-
-      // Already credited
       if (
         payment.status === 'paid' ||
         payment.status === 'captured'
@@ -1692,14 +1591,11 @@ app.post(
 
       }
 
-
-      // Compare webhook amount with DB amount
       const webhookAmount =
         Number(amount);
 
       const expectedAmount =
         Number(payment.amount) / 100;
-
 
       if (
         !Number.isFinite(
@@ -1728,10 +1624,8 @@ app.post(
 
       }
 
-
       const mongoSession =
         await mongoose.startSession();
-
 
       try {
 
@@ -1745,15 +1639,12 @@ app.post(
                 mongoSession
               );
 
-
             if (!freshPayment) {
               throw new Error(
                 'Payment not found.'
               );
             }
 
-
-            // Idempotency
             if (
               freshPayment.status === 'paid' ||
               freshPayment.status === 'captured'
@@ -1761,13 +1652,11 @@ app.post(
               return;
             }
 
-
             const wallet =
               await ensureWallet(
                 freshPayment.user_id,
                 mongoSession
               );
-
 
             const oldBalance =
               Number(
@@ -1783,19 +1672,16 @@ app.post(
               oldBalance +
               creditAmount;
 
-
             wallet.balance =
               newBalance;
 
             wallet.updated_at =
               new Date();
 
-
             await wallet.save({
               session:
                 mongoSession
             });
-
 
             await WalletTransaction.create(
               [
@@ -1830,13 +1716,11 @@ app.post(
               }
             );
 
-
             freshPayment.status =
               'paid';
 
             freshPayment.paid_at =
               new Date();
-
 
             await freshPayment.save({
               session:
@@ -1846,26 +1730,22 @@ app.post(
           }
         );
 
-
       } finally {
 
         await mongoSession.endSession();
 
       }
 
-
       console.log(
         'RS Payment credited:',
         merchant_order_id
       );
-
 
       return res.status(200).json({
         success: true,
         message:
           'Payment processed successfully.'
       });
-
 
     } catch (error) {
 
@@ -1884,7 +1764,6 @@ app.post(
 
   }
 );
-
 
 // =====================================================
 // PAYMENT STATUS
@@ -1906,7 +1785,6 @@ app.get(
             req.session.userId
         });
 
-
       if (!payment) {
 
         return res.status(404).json({
@@ -1916,7 +1794,6 @@ app.get(
         });
 
       }
-
 
       return res.json({
         success: true,
@@ -1952,7 +1829,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ORDERS
 // =====================================================
@@ -1973,7 +1849,6 @@ app.get(
           created_at: -1
         })
         .lean();
-
 
       const orders =
         payments.map(
@@ -2009,7 +1884,6 @@ app.get(
           })
         );
 
-
       return res.json({
         success: true,
         orders
@@ -2032,7 +1906,6 @@ app.get(
 
   }
 );
-
 
 // =====================================================
 // WITHDRAWAL REQUEST
@@ -2081,7 +1954,6 @@ app.post(
           req.body.ifsc || ''
         ).trim().toUpperCase();
 
-
       if (
         !Number.isFinite(amount) ||
         amount <= 0
@@ -2095,7 +1967,6 @@ app.post(
 
       }
 
-
       if (amount < 50) {
 
         return res.status(400).json({
@@ -2105,16 +1976,6 @@ app.post(
         });
 
       }
-
-
-      /*
-       * Current withdrawal system supports
-       * UPI/BANK manually.
-       *
-       * RS Payment withdrawal API supports
-       * BANK details only, so we keep the
-       * existing withdrawal system here.
-       */
 
       if (
         method === 'UPI' &&
@@ -2128,7 +1989,6 @@ app.post(
         });
 
       }
-
 
       if (
         method === 'BANK'
@@ -2148,7 +2008,6 @@ app.post(
 
         }
 
-
         if (
           confirmAccountNumber &&
           accountNumber !==
@@ -2162,7 +2021,6 @@ app.post(
           });
 
         }
-
 
         if (
           !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(
@@ -2180,19 +2038,15 @@ app.post(
 
       }
 
-
       const amountPaise =
         Math.round(
           amount * 100
         );
 
-
       const mongoSession =
         await mongoose.startSession();
 
-
       let withdrawal;
-
 
       try {
 
@@ -2205,12 +2059,10 @@ app.post(
                 mongoSession
               );
 
-
             const balance =
               Number(
                 wallet.balance || 0
               );
-
 
             if (
               balance <
@@ -2223,11 +2075,9 @@ app.post(
 
             }
 
-
             const newBalance =
               balance -
               amountPaise;
-
 
             wallet.balance =
               newBalance;
@@ -2235,12 +2085,10 @@ app.post(
             wallet.updated_at =
               new Date();
 
-
             await wallet.save({
               session:
                 mongoSession
             });
-
 
             const created =
               await Withdrawal.create(
@@ -2290,10 +2138,8 @@ app.post(
                 }
               );
 
-
             withdrawal =
               created[0];
-
 
             await WalletTransaction.create(
               [
@@ -2331,7 +2177,6 @@ app.post(
           }
         );
 
-
       } catch (error) {
 
         if (
@@ -2354,7 +2199,6 @@ app.post(
         await mongoSession.endSession();
 
       }
-
 
       return res.json({
         success: true,
@@ -2392,7 +2236,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // USER WITHDRAWAL HISTORY
 // =====================================================
@@ -2413,7 +2256,6 @@ app.get(
           created_at: -1
         })
         .lean();
-
 
       return res.json({
         success: true,
@@ -2477,7 +2319,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ADMIN USERS
 // =====================================================
@@ -2499,9 +2340,7 @@ app.get(
           })
           .lean();
 
-
       const result = [];
-
 
       for (const user of users) {
 
@@ -2511,8 +2350,8 @@ app.get(
               user._id
           }).lean();
 
-
         result.push({
+
           id:
             user._id,
 
@@ -2532,10 +2371,10 @@ app.get(
             Number(
               wallet?.balance || 0
             ) / 100
+
         });
 
       }
-
 
       return res.json({
         success: true,
@@ -2560,7 +2399,6 @@ app.get(
 
   }
 );
-
 
 // =====================================================
 // ADMIN BALANCE ADJUSTMENT
@@ -2591,7 +2429,6 @@ app.post(
           'Admin adjustment'
         ).trim();
 
-
       if (
         !Number.isFinite(amount) ||
         amount <= 0
@@ -2604,7 +2441,6 @@ app.post(
         });
 
       }
-
 
       if (
         !['credit', 'debit'].includes(
@@ -2620,19 +2456,15 @@ app.post(
 
       }
 
-
       const amountPaise =
         Math.round(
           amount * 100
         );
 
-
       const mongoSession =
         await mongoose.startSession();
 
-
       let newBalance;
-
 
       try {
 
@@ -2646,13 +2478,11 @@ app.post(
                 mongoSession
               );
 
-
             if (!user) {
               throw new Error(
                 'User not found.'
               );
             }
-
 
             const wallet =
               await ensureWallet(
@@ -2660,12 +2490,10 @@ app.post(
                 mongoSession
               );
 
-
             const oldBalance =
               Number(
                 wallet.balance || 0
               );
-
 
             if (
               type === 'debit' &&
@@ -2678,7 +2506,6 @@ app.post(
               );
 
             }
-
 
             if (
               type === 'credit'
@@ -2696,19 +2523,16 @@ app.post(
 
             }
 
-
             wallet.balance =
               newBalance;
 
             wallet.updated_at =
               new Date();
 
-
             await wallet.save({
               session:
                 mongoSession
             });
-
 
             await WalletTransaction.create(
               [
@@ -2746,7 +2570,6 @@ app.post(
           }
         );
 
-
       } catch (error) {
 
         if (
@@ -2771,7 +2594,6 @@ app.post(
         await mongoSession.endSession();
 
       }
-
 
       return res.json({
         success: true,
@@ -2801,7 +2623,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // ADMIN WITHDRAWALS
 // =====================================================
@@ -2824,12 +2645,13 @@ app.get(
           })
           .lean();
 
-
       return res.json({
         success: true,
+
         withdrawals:
           withdrawals.map(
             item => ({
+
               id:
                 item._id,
 
@@ -2878,6 +2700,7 @@ app.get(
 
               processed_at:
                 item.processed_at
+
             })
           )
       });
@@ -2900,6 +2723,73 @@ app.get(
   }
 );
 
+// =====================================================
+// ADMIN PROCESSING WITHDRAWAL
+// =====================================================
+
+app.post(
+  '/api/admin/withdrawals/:id/processing',
+  admin,
+  async (req, res) => {
+
+    try {
+
+      const withdrawal =
+        await Withdrawal.findById(
+          req.params.id
+        );
+
+      if (!withdrawal) {
+
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal not found.'
+        });
+
+      }
+
+      if (
+        withdrawal.status !==
+        'pending'
+      ) {
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Only pending withdrawals can be moved to processing.'
+        });
+
+      }
+
+      withdrawal.status =
+        'processing';
+
+      await withdrawal.save();
+
+      return res.json({
+        success: true,
+        message:
+          'Withdrawal moved to processing.'
+      });
+
+    } catch (error) {
+
+      console.error(
+        'Processing withdrawal error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to process withdrawal.'
+      });
+
+    }
+
+  }
+);
 
 // =====================================================
 // ADMIN COMPLETE WITHDRAWAL
@@ -2917,7 +2807,6 @@ app.post(
           req.params.id
         );
 
-
       if (!withdrawal) {
 
         return res.status(404).json({
@@ -2928,20 +2817,19 @@ app.post(
 
       }
 
-
+      // Pending -> Processing -> Completed
       if (
         withdrawal.status !==
-        'pending'
+        'processing'
       ) {
 
         return res.status(400).json({
           success: false,
           message:
-            'Withdrawal is already processed.'
+            'Withdrawal must be processing before completion.'
         });
 
       }
-
 
       withdrawal.status =
         'completed';
@@ -2949,9 +2837,7 @@ app.post(
       withdrawal.processed_at =
         new Date();
 
-
       await withdrawal.save();
-
 
       return res.json({
         success: true,
@@ -2977,7 +2863,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // ADMIN REJECT WITHDRAWAL + REFUND
 // =====================================================
@@ -2989,7 +2874,6 @@ app.post(
 
     const mongoSession =
       await mongoose.startSession();
-
 
     try {
 
@@ -3003,14 +2887,14 @@ app.post(
               mongoSession
             );
 
-
           if (!withdrawal) {
             throw new Error(
               'Withdrawal not found.'
             );
           }
 
-
+          // Rejection is allowed only while
+          // the withdrawal is still pending.
           if (
             withdrawal.status !==
             'pending'
@@ -3022,19 +2906,16 @@ app.post(
 
           }
 
-
           const wallet =
             await ensureWallet(
               withdrawal.user_id,
               mongoSession
             );
 
-
           const oldBalance =
             Number(
               wallet.balance || 0
             );
-
 
           const newBalance =
             oldBalance +
@@ -3042,19 +2923,16 @@ app.post(
               withdrawal.amount
             );
 
-
           wallet.balance =
             newBalance;
 
           wallet.updated_at =
             new Date();
 
-
           await wallet.save({
             session:
               mongoSession
           });
-
 
           await WalletTransaction.create(
             [
@@ -3089,13 +2967,11 @@ app.post(
             }
           );
 
-
           withdrawal.status =
             'rejected';
 
           withdrawal.processed_at =
             new Date();
-
 
           await withdrawal.save({
             session:
@@ -3104,7 +2980,6 @@ app.post(
 
         }
       );
-
 
       return res.json({
         success: true,
@@ -3135,9 +3010,10 @@ app.post(
   }
 );
 
-
 // =====================================================
 // ADMIN SUMMARY
+// FIXED: REAL BALANCE + PAYMENT AMOUNTS +
+// WITHDRAWAL AMOUNTS + PROCESSING COUNT
 // =====================================================
 
 app.get(
@@ -3147,31 +3023,188 @@ app.get(
 
     try {
 
+      // -----------------------------------------------
+      // TOTAL USERS
+      // -----------------------------------------------
+
       const totalUsers =
         await User.countDocuments();
 
+      // -----------------------------------------------
+      // TOTAL WALLET BALANCE
+      // -----------------------------------------------
 
-      const pendingWithdrawals =
-        await Withdrawal.countDocuments({
-          status: 'pending'
-        });
+      const walletResult =
+        await Wallet.aggregate([
+          {
+            $group: {
+              _id: null,
 
+              total: {
+                $sum: {
+                  $ifNull: [
+                    '$balance',
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        ]);
 
-      const completedWithdrawals =
-        await Withdrawal.countDocuments({
-          status: 'completed'
-        });
+      const totalBalancePaise =
+        Number(
+          walletResult[0]?.total || 0
+        );
 
+      // -----------------------------------------------
+      // WITHDRAWAL SUMMARY
+      // -----------------------------------------------
 
-      const paymentCount =
-        await Payment.countDocuments({
-          status: 'paid'
-        });
+      const withdrawalResult =
+        await Withdrawal.aggregate([
+          {
+            $group: {
 
+              _id:
+                '$status',
+
+              totalAmount: {
+                $sum: {
+                  $ifNull: [
+                    '$amount',
+                    0
+                  ]
+                }
+              },
+
+              count: {
+                $sum: 1
+              }
+
+            }
+          }
+        ]);
+
+      let pendingWithdrawals = 0;
+      let processingWithdrawals = 0;
+      let completedWithdrawals = 0;
+
+      let totalWithdrawnPaise = 0;
+
+      for (
+        const item of withdrawalResult
+      ) {
+
+        const status =
+          String(
+            item._id || ''
+          ).toLowerCase();
+
+        const amount =
+          Number(
+            item.totalAmount || 0
+          );
+
+        const count =
+          Number(
+            item.count || 0
+          );
+
+        if (
+          status === 'pending'
+        ) {
+
+          pendingWithdrawals =
+            count;
+
+        }
+
+        if (
+          status === 'processing'
+        ) {
+
+          processingWithdrawals =
+            count;
+
+        }
+
+        if (
+          status === 'completed'
+        ) {
+
+          completedWithdrawals =
+            count;
+
+          // Only completed withdrawals
+          // are counted as Total Withdrawn.
+          totalWithdrawnPaise +=
+            amount;
+
+        }
+
+      }
+
+      // -----------------------------------------------
+      // PAID PAYMENT SUMMARY
+      // -----------------------------------------------
+
+      const paymentResult =
+        await Payment.aggregate([
+          {
+            $match: {
+              status: {
+                $in: [
+                  'paid',
+                  'captured'
+                ]
+              }
+            }
+          },
+
+          {
+            $group: {
+
+              _id: null,
+
+              totalAmount: {
+                $sum: {
+                  $ifNull: [
+                    '$amount',
+                    0
+                  ]
+                }
+              },
+
+              count: {
+                $sum: 1
+              }
+
+            }
+          }
+        ]);
+
+      const totalPaymentsPaise =
+        Number(
+          paymentResult[0]?.totalAmount || 0
+        );
+
+      const successfulPayments =
+        Number(
+          paymentResult[0]?.count || 0
+        );
+
+      // -----------------------------------------------
+      // RETURN BOTH naming formats
+      // so existing admin-dashboard.html
+      // continues working.
+      // -----------------------------------------------
 
       return res.json({
+
         success: true,
 
+        // Existing API fields
         total_users:
           totalUsers,
 
@@ -3182,7 +3215,39 @@ app.get(
           completedWithdrawals,
 
         successful_payments:
-          paymentCount
+          successfulPayments,
+
+        // Dashboard-compatible fields
+        totalUsers:
+          totalUsers,
+
+        totalBalance:
+          totalBalancePaise / 100,
+
+        total_balance:
+          totalBalancePaise / 100,
+
+        totalWithdrawn:
+          totalWithdrawnPaise / 100,
+
+        total_withdrawals:
+          totalWithdrawnPaise / 100,
+
+        pending:
+          pendingWithdrawals,
+
+        processing:
+          processingWithdrawals,
+
+        processing_withdrawals:
+          processingWithdrawals,
+
+        totalPayments:
+          totalPaymentsPaise / 100,
+
+        total_payments:
+          totalPaymentsPaise / 100
+
       });
 
     } catch (error) {
@@ -3203,7 +3268,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ADMIN TOTAL USERS
 // =====================================================
@@ -3218,7 +3282,6 @@ app.get(
       const count =
         await User.countDocuments();
 
-
       return res.json({
         success: true,
         total_users:
@@ -3226,6 +3289,11 @@ app.get(
       });
 
     } catch (error) {
+
+      console.error(
+        'Admin total users error:',
+        error
+      );
 
       return res.status(500).json({
         success: false,
@@ -3237,7 +3305,6 @@ app.get(
 
   }
 );
-
 
 // =====================================================
 // LOGOUT
@@ -3265,11 +3332,9 @@ app.post(
 
         }
 
-
         res.clearCookie(
           'truewalk.sid'
         );
-
 
         return res.json({
           success: true,
@@ -3283,7 +3348,6 @@ app.post(
   }
 );
 
-
 // =====================================================
 // STATIC FILES
 // =====================================================
@@ -3293,7 +3357,6 @@ app.use(
     path.join(__dirname)
   )
 );
-
 
 // =====================================================
 // ROOT
@@ -3313,7 +3376,6 @@ app.get(
   }
 );
 
-
 // =====================================================
 // ERROR HANDLER
 // =====================================================
@@ -3331,11 +3393,9 @@ app.use(
       err
     );
 
-
     if (res.headersSent) {
       return next(err);
     }
-
 
     return res.status(500).json({
       success: false,
@@ -3345,7 +3405,6 @@ app.use(
 
   }
 );
-
 
 // =====================================================
 // START SERVER
@@ -3359,11 +3418,9 @@ async function startServer() {
       MONGO_URI
     );
 
-
     console.log(
       'MongoDB connected successfully.'
     );
-
 
     console.log(
       'RS Payment:',
@@ -3371,7 +3428,6 @@ async function startServer() {
         ? 'configured'
         : 'NOT configured'
     );
-
 
     app.listen(
       PORT,
@@ -3396,6 +3452,5 @@ async function startServer() {
   }
 
 }
-
 
 startServer();
