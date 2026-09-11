@@ -559,11 +559,12 @@ function admin(
 
 // =====================================================
 // SESSION
-// FIXED: RENDER + MONGODB SESSION PERSISTENCE
+// FIXED FOR RENDER + MONGODB SESSION
 // =====================================================
 
 app.use(
   session({
+
     name: 'truewalk.sid',
 
     secret:
@@ -573,6 +574,8 @@ app.use(
 
     saveUninitialized: false,
 
+    // IMPORTANT:
+    // Trust Render reverse proxy
     proxy: true,
 
     store:
@@ -583,11 +586,16 @@ app.use(
       }),
 
     cookie: {
+
       httpOnly: true,
 
+      // Production Render uses HTTPS.
       secure:
         process.env.NODE_ENV === 'production',
 
+      // Allows session cookie to work
+      // when frontend/backend are on
+      // different origins.
       sameSite:
         process.env.NODE_ENV === 'production'
           ? 'none'
@@ -596,6 +604,7 @@ app.use(
       maxAge:
         14 * 24 * 60 * 60 * 1000
     }
+
   })
 );
 
@@ -617,7 +626,7 @@ app.get(
 
 // =====================================================
 // ADMIN LOGIN
-// FIXED: NEW SESSION + EXPLICIT MONGODB SAVE
+// FIXED: REGENERATE + SAVE SESSION
 // =====================================================
 
 app.post(
@@ -662,8 +671,9 @@ app.post(
 
       }
 
-      // Create a fresh session after
-      // successful admin authentication.
+      // IMPORTANT:
+      // Create a completely fresh session
+      // after successful admin authentication.
       req.session.regenerate(
         (regenerateError) => {
 
@@ -686,8 +696,9 @@ app.post(
 
           req.session.isAdmin = true;
 
-          // Explicitly save the session
-          // into MongoDB before responding.
+          // IMPORTANT:
+          // Wait until MongoDB session store
+          // confirms the session is saved.
           req.session.save(
             (saveError) => {
 
