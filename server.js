@@ -560,53 +560,7 @@ function admin(
 // =====================================================
 // SESSION
 // FIXED FOR RENDER + MONGODB SESSION
-// =====================================================
-
-app.use(
-  session({
-
-    name: 'truewalk.sid',
-
-    secret:
-      SESSION_SECRET,
-
-    resave: false,
-
-    saveUninitialized: false,
-
-    // IMPORTANT:
-    // Trust Render reverse proxy
-    proxy: true,
-
-    store:
-      MongoStore.create({
-        mongoUrl: MONGO_URI,
-        collectionName: 'sessions',
-        ttl: 14 * 24 * 60 * 60
-      }),
-
-    cookie: {
-
-      httpOnly: true,
-
-      // Production Render uses HTTPS.
-      secure:
-        process.env.NODE_ENV === 'production',
-
-      // Allows session cookie to work
-      // when frontend/backend are on
-      // different origins.
-      sameSite:
-        process.env.NODE_ENV === 'production'
-          ? 'none'
-          : 'lax',
-
-      maxAge:
-        14 * 24 * 60 * 60 * 1000
-    }
-
-  })
-);
+// ===========================================
 
 // =====================================================
 // HOME PROTECTION
@@ -625,9 +579,49 @@ app.get(
 );
 
 // =====================================================
-// ADMIN LOGIN
-// FIXED: REGENERATE + SAVE SESSION
+// SESSION
+// FINAL FIX FOR RENDER + MONGODB SESSION
 // =====================================================
+
+const isProduction =
+  process.env.NODE_ENV === 'production';
+
+app.use(
+  session({
+
+    name: 'truewalk.sid',
+
+    secret: SESSION_SECRET,
+
+    resave: false,
+
+    saveUninitialized: false,
+
+    proxy: true,
+
+    store: MongoStore.create({
+      mongoUrl: MONGO_URI,
+      collectionName: 'sessions',
+      ttl: 14 * 24 * 60 * 60
+    }),
+
+    cookie: {
+
+      httpOnly: true,
+
+      secure: isProduction,
+
+      sameSite: isProduction
+        ? 'none'
+        : 'lax',
+
+      maxAge:
+        14 * 24 * 60 * 60 * 1000
+
+    }
+
+  })
+);
 
 app.post(
   '/api/admin/login',
