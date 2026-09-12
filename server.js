@@ -766,26 +766,28 @@ app.post(
     req.session.isAdmin = false;
     req.session.userId = null;
 
-    req.session.save((error) => {
-      if (error) {
-        console.error(
-          'Admin logout session error:',
-          error
-        );
+    req.session.save(
+      (error) => {
+        if (error) {
+          console.error(
+            'Admin logout session error:',
+            error
+          );
 
-        return res.status(500).json({
-          success: false,
+          return res.status(500).json({
+            success: false,
+            message:
+              'Admin logout failed.'
+          });
+        }
+
+        return res.json({
+          success: true,
           message:
-            'Admin logout failed.'
+            'Admin logged out.'
         });
       }
-
-      return res.json({
-        success: true,
-        message:
-          'Admin logged out.'
-      });
-    });
+    );
   }
 );
 
@@ -1311,15 +1313,6 @@ app.post(
         RSPAY_RETURN_URL
       );
 
-      console.log(
-        'Creating RS Payment:',
-        {
-          order_id:
-            merchantOrderId,
-          amount
-        }
-      );
-
       const response =
         await fetch(
           `${RSPAY_API_URL}?${params.toString()}`,
@@ -1356,11 +1349,6 @@ app.post(
       }
 
       if (!response.ok) {
-        console.error(
-          'RS Payment HTTP error:',
-          result
-        );
-
         return res.status(502).json({
           success: false,
           message:
@@ -1374,11 +1362,6 @@ app.post(
         !result.data ||
         !result.data.payUrl
       ) {
-        console.error(
-          'RS Payment API error:',
-          result
-        );
-
         return res.status(400).json({
           success: false,
           message:
@@ -1433,8 +1416,7 @@ app.post(
         payUrl:
           payment.pay_url,
 
-        amount:
-          amount,
+        amount,
 
         currency:
           'INR'
@@ -1487,11 +1469,6 @@ app.post(
         String(user_id || '') !==
         String(RSPAY_MERCHANT_ID)
       ) {
-        console.error(
-          'Invalid RS Payment merchant:',
-          user_id
-        );
-
         return res.status(403).json({
           success: false,
           message:
@@ -1517,11 +1494,6 @@ app.post(
         });
 
       if (!payment) {
-        console.error(
-          'Payment not found:',
-          merchant_order_id
-        );
-
         return res.status(404).json({
           success: false,
           message:
@@ -1547,23 +1519,12 @@ app.post(
         Number(payment.amount) / 100;
 
       if (
-        !Number.isFinite(
-          webhookAmount
-        ) ||
+        !Number.isFinite(webhookAmount) ||
         Math.abs(
           webhookAmount -
           expectedAmount
         ) > 0.01
       ) {
-        console.error(
-          'Payment amount mismatch:',
-          {
-            merchant_order_id,
-            webhookAmount,
-            expectedAmount
-          }
-        );
-
         return res.status(400).json({
           success: false,
           message:
@@ -1677,11 +1638,6 @@ app.post(
       } finally {
         await mongoSession.endSession();
       }
-
-      console.log(
-        'RS Payment credited:',
-        merchant_order_id
-      );
 
       return res.status(200).json({
         success: true,
@@ -1835,49 +1791,80 @@ app.get(
 );
 
 // =====================================================
-// WITHDRAWAL REQUEST
+// WITHDRAWAL REQUEST — FIXED
 // =====================================================
 
 app.post(
   '/api/withdrawals',
   login,
   async (req, res) => {
+    console.log(
+      'WITHDRAWAL REQUEST:',
+      req.body
+    );
+
+    let mongoSession = null;
+
     try {
+      // -------------------------------------------------
+      // SUPPORT BOTH FRONTEND FIELD NAMES
+      // -------------------------------------------------
+
       const amount =
-        Number(req.body.amount);
+        Number(
+          req.body.amount
+        );
 
       const method =
         String(
           req.body.method ||
+          req.body.withdrawalMethod ||
           'BANK'
-        ).toUpperCase();
+        )
+        .trim()
+        .toUpperCase();
 
       const upiId =
         String(
-          req.body.upi_id || ''
+          req.body.upi_id ||
+          req.body.upiId ||
+          ''
         ).trim();
 
       const accountName =
         String(
-          req.body.account_name || ''
+          req.body.account_name ||
+          req.body.accountName ||
+          ''
         ).trim();
 
       const accountNumber =
         String(
-          req.body.account_number || ''
+          req.body.account_number ||
+          req.body.accountNumber ||
+          ''
         ).trim();
 
       const confirmAccountNumber =
         String(
           req.body.confirm_account_number ||
           req.body.confirmAccountNumber ||
+          req.body.confirm_account ||
           ''
         ).trim();
 
       const ifsc =
         String(
-          req.body.ifsc || ''
-        ).trim().toUpperCase();
+          req.body.ifsc ||
+          req.body.IFSC ||
+          ''
+        )
+        .trim()
+        .toUpperCase();
+
+      // -------------------------------------------------
+      // AMOUNT
+      // -------------------------------------------------
 
       if (
         !Number.isFinite(amount) ||
@@ -1898,36 +1885,99 @@ app.post(
         });
       }
 
+      const amountPaise =
+        Math.round(
+          amount * 100
+        );
+
       if (
-        method === 'UPI' &&
-        !upiId
+        amountPaise <= 0
       ) {
         return res.status(400).json({
           success: false,
           message:
-            'UPI ID is required.'
+            'Invalid withdrawal amount.'
         });
       }
 
+      // -------------------------------------------------
+      // METHOD
+      // -------------------------------------------------
+
       if (
-        method === 'BANK'
+        !['UPI', 'BANK'].includes(
+          method
+        )
       ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal method.'
+        });
+      }
+
+      // -------------------------------------------------
+      // UPI
+      // -------------------------------------------------
+
+      if (
+        method === 'UPI'
+      ) {
+        if (!upiId) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'UPI ID is required.'
+          });
+        }
+
         if (
-          !accountName ||
-          !accountNumber ||
-          !ifsc
+          !/^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+$/
+            .test(upiId)
         ) {
           return res.status(400).json({
             success: false,
             message:
-              'Bank account details are required.'
+              'Please enter a valid UPI ID.'
+          });
+        }
+      }
+
+      // -------------------------------------------------
+      // BANK
+      // -------------------------------------------------
+
+      if (
+        method === 'BANK'
+      ) {
+        if (!accountName) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Account holder name is required.'
+          });
+        }
+
+        if (!accountNumber) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Bank account number is required.'
+          });
+        }
+
+        if (!ifsc) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'IFSC code is required.'
           });
         }
 
         if (
           confirmAccountNumber &&
           accountNumber !==
-          confirmAccountNumber
+            confirmAccountNumber
         ) {
           return res.status(400).json({
             success: false,
@@ -1937,7 +1987,7 @@ app.post(
         }
 
         if (
-          !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(
+          !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
             ifsc
           )
         ) {
@@ -1949,127 +1999,118 @@ app.post(
         }
       }
 
-      const amountPaise =
-        Math.round(
-          amount * 100
-        );
+      // -------------------------------------------------
+      // START MONGODB TRANSACTION
+      // -------------------------------------------------
 
-      const mongoSession =
+      mongoSession =
         await mongoose.startSession();
 
-      let withdrawal;
+      let withdrawal = null;
 
-      try {
-        await mongoSession.withTransaction(
-          async () => {
-            const wallet =
-              await ensureWallet(
-                req.session.userId,
-                mongoSession
-              );
+      await mongoSession.withTransaction(
+        async () => {
 
-            const balance =
-              Number(
-                wallet.balance || 0
-              );
+          // Get wallet
+          const wallet =
+            await ensureWallet(
+              req.session.userId,
+              mongoSession
+            );
 
-            if (
-              balance <
-              amountPaise
-            ) {
-              throw new Error(
-                'Insufficient wallet balance.'
-              );
+          const balance =
+            Number(
+              wallet.balance || 0
+            );
+
+          console.log(
+            'WITHDRAWAL BALANCE:',
+            {
+              balance_paise:
+                balance,
+              balance_rupees:
+                balance / 100,
+              requested_paise:
+                amountPaise,
+              requested_rupees:
+                amount
             }
+          );
 
-            const newBalance =
-              balance -
-              amountPaise;
+          // -------------------------------------------------
+          // BALANCE CHECK
+          // -------------------------------------------------
 
-            wallet.balance =
-              newBalance;
+          if (
+            balance <
+            amountPaise
+          ) {
+            throw new Error(
+              'Insufficient wallet balance.'
+            );
+          }
 
-            wallet.updated_at =
-              new Date();
+          const newBalance =
+            balance -
+            amountPaise;
 
-            await wallet.save({
-              session:
-                mongoSession
-            });
+          // -------------------------------------------------
+          // DEDUCT BALANCE
+          // -------------------------------------------------
 
-            const created =
-              await Withdrawal.create(
-                [
-                  {
-                    user_id:
-                      req.session.userId,
+          wallet.balance =
+            newBalance;
 
-                    amount:
-                      amountPaise,
+          wallet.updated_at =
+            new Date();
 
-                    currency:
-                      'INR',
+          await wallet.save({
+            session:
+              mongoSession
+          });
 
-                    method,
+          // -------------------------------------------------
+          // CREATE WITHDRAWAL
+          // -------------------------------------------------
 
-                    upi_id:
-                      method === 'UPI'
-                        ? upiId
-                        : null,
-
-                    account_name:
-                      method === 'BANK'
-                        ? accountName
-                        : null,
-
-                    account_last4:
-                      method === 'BANK'
-                        ? accountNumber.slice(-4)
-                        : null,
-
-                    ifsc:
-                      method === 'BANK'
-                        ? ifsc
-                        : null,
-
-                    status:
-                      'pending',
-
-                    created_at:
-                      new Date()
-                  }
-                ],
-                {
-                  session:
-                    mongoSession
-                }
-              );
-
-            withdrawal =
-              created[0];
-
-            await WalletTransaction.create(
+          const created =
+            await Withdrawal.create(
               [
                 {
                   user_id:
                     req.session.userId,
 
-                  type:
-                    'debit',
-
                   amount:
                     amountPaise,
 
-                  balance_after:
-                    newBalance,
+                  currency:
+                    'INR',
 
-                  reference_type:
-                    'withdrawal',
+                  method:
+                    method,
 
-                  reference_id:
-                    String(
-                      withdrawal._id
-                    ),
+                  upi_id:
+                    method === 'UPI'
+                      ? upiId
+                      : null,
+
+                  account_name:
+                    method === 'BANK'
+                      ? accountName
+                      : null,
+
+                  account_last4:
+                    method === 'BANK'
+                      ? accountNumber.slice(-4)
+                      : null,
+
+                  ifsc:
+                    method === 'BANK'
+                      ? ifsc
+                      : null,
+
+                  status:
+                    'pending',
 
                   created_at:
                     new Date()
@@ -2080,32 +2121,64 @@ app.post(
                   mongoSession
               }
             );
-          }
-        );
 
-      } catch (error) {
-        if (
-          error.message ===
-          'Insufficient wallet balance.'
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              error.message
-          });
+          withdrawal =
+            created[0];
+
+          // -------------------------------------------------
+          // WALLET DEBIT TRANSACTION
+          // -------------------------------------------------
+
+          await WalletTransaction.create(
+            [
+              {
+                user_id:
+                  req.session.userId,
+
+                type:
+                  'debit',
+
+                amount:
+                  amountPaise,
+
+                balance_after:
+                  newBalance,
+
+                reference_type:
+                  'withdrawal',
+
+                reference_id:
+                  String(
+                    withdrawal._id
+                  ),
+
+                created_at:
+                  new Date()
+              }
+            ],
+            {
+              session:
+                mongoSession
+            }
+          );
         }
+      );
 
-        throw error;
+      console.log(
+        'WITHDRAWAL SUCCESS:',
+        {
+          id:
+            withdrawal._id,
+          amount,
+          method
+        }
+      );
 
-      } finally {
-        await mongoSession.endSession();
-      }
-
-      return res.json({
+      return res.status(200).json({
         success: true,
 
         message:
-          'Withdrawal request submitted and amount reserved.',
+          'Withdrawal request submitted successfully.',
 
         withdrawal: {
           id:
@@ -2115,21 +2188,71 @@ app.post(
             amount,
 
           status:
-            withdrawal.status
+            withdrawal.status,
+
+          method:
+            method
         }
       });
 
     } catch (error) {
+
       console.error(
-        'Withdrawal error:',
+        'WITHDRAWAL ERROR:',
         error
       );
+
+      if (
+        error &&
+        error.message ===
+          'Insufficient wallet balance.'
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Insufficient wallet balance.'
+        });
+      }
+
+      // MongoDB transaction error
+      if (
+        error &&
+        (
+          error.codeName ===
+            'TransactionNotSupported' ||
+          error.code === 20 ||
+          String(
+            error.message || ''
+          ).toLowerCase().includes(
+            'transaction numbers are only allowed'
+          )
+        )
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'Withdrawal database transaction is not supported by the current MongoDB connection.'
+        });
+      }
 
       return res.status(500).json({
         success: false,
         message:
+          error.message ||
           'Unable to submit withdrawal request.'
       });
+
+    } finally {
+      if (mongoSession) {
+        try {
+          await mongoSession.endSession();
+        } catch (sessionError) {
+          console.error(
+            'Withdrawal session close error:',
+            sessionError
+          );
+        }
+      }
     }
   }
 );
