@@ -127,10 +127,6 @@ const userSchema = new mongoose.Schema(
       index: true
     },
 
-    // =================================================
-    // BAN STATUS
-    // =================================================
-
     banned: {
       type: Boolean,
       default: false,
@@ -460,14 +456,12 @@ async function ensureWallet(
   userId,
   mongoSession = null
 ) {
-
   let wallet =
     await Wallet.findOne({
       user_id: userId
     }).session(mongoSession);
 
   if (!wallet) {
-
     const created =
       await Wallet.create(
         [
@@ -493,7 +487,6 @@ async function ensureWallet(
 // =====================================================
 
 function safeUser(user) {
-
   if (!user) {
     return null;
   }
@@ -516,16 +509,12 @@ async function login(
   res,
   next
 ) {
-
   try {
-
     if (!req.session.userId) {
-
       return res.status(401).json({
         success: false,
         message: 'Login required.'
       });
-
     }
 
     const user =
@@ -534,35 +523,26 @@ async function login(
       );
 
     if (!user) {
-
       req.session.destroy(() => {});
 
       return res.status(401).json({
         success: false,
         message: 'User account not found.'
       });
-
     }
 
-    // ===============================================
-    // BLOCK BANNED USERS EVEN IF OLD SESSION EXISTS
-    // ===============================================
-
     if (user.banned === true) {
-
       req.session.destroy(() => {});
 
       return res.status(403).json({
         success: false,
         message: 'Your account has been banned.'
       });
-
     }
 
     next();
 
   } catch (error) {
-
     console.error(
       'Login middleware error:',
       error
@@ -572,7 +552,6 @@ async function login(
       success: false,
       message: 'Authentication error.'
     });
-
   }
 }
 
@@ -585,14 +564,11 @@ function admin(
   res,
   next
 ) {
-
   if (!req.session.isAdmin) {
-
     return res.status(401).json({
       success: false,
       message: 'Admin login required.'
     });
-
   }
 
   next();
@@ -607,7 +583,6 @@ const isProduction =
 
 app.use(
   session({
-
     name: 'truewalk.sid',
 
     secret: SESSION_SECRET,
@@ -625,7 +600,6 @@ app.use(
     }),
 
     cookie: {
-
       httpOnly: true,
 
       secure: isProduction,
@@ -636,34 +610,27 @@ app.use(
 
       maxAge:
         14 * 24 * 60 * 60 * 1000
-
     }
-
   })
 );
 
 // =====================================================
 // HOME PROTECTION
-// MUST BE AFTER SESSION MIDDLEWARE
 // =====================================================
 
 app.get(
   '/home.html',
   (req, res, next) => {
-
     if (
       !req.session ||
       !req.session.userId
     ) {
-
       return res.redirect(
         '/login.html'
       );
-
     }
 
     next();
-
   }
 );
 
@@ -674,9 +641,7 @@ app.get(
 app.post(
   '/api/admin/login',
   async (req, res) => {
-
     try {
-
       const username =
         String(
           req.body.username || ''
@@ -691,33 +656,27 @@ app.post(
         !ADMIN_USERNAME ||
         !ADMIN_PASSWORD
       ) {
-
         return res.status(500).json({
           success: false,
           message:
             'Admin credentials are not configured.'
         });
-
       }
 
       if (
         username !== ADMIN_USERNAME ||
         password !== ADMIN_PASSWORD
       ) {
-
         return res.status(401).json({
           success: false,
           message:
             'Invalid admin credentials.'
         });
-
       }
 
       req.session.regenerate(
         (regenerateError) => {
-
           if (regenerateError) {
-
             console.error(
               'Admin session regenerate error:',
               regenerateError
@@ -728,18 +687,14 @@ app.post(
               message:
                 'Unable to create admin session.'
             });
-
           }
 
           req.session.userId = null;
-
           req.session.isAdmin = true;
 
           req.session.save(
             (saveError) => {
-
               if (saveError) {
-
                 console.error(
                   'Admin session save error:',
                   saveError
@@ -750,7 +705,6 @@ app.post(
                   message:
                     'Unable to save admin session.'
                 });
-
               }
 
               return res.json({
@@ -759,15 +713,12 @@ app.post(
                 message:
                   'Admin login successful.'
               });
-
             }
           );
-
         }
       );
 
     } catch (error) {
-
       console.error(
         'Admin login error:',
         error
@@ -778,9 +729,7 @@ app.post(
         message:
           'Admin login failed.'
       });
-
     }
-
   }
 );
 
@@ -792,12 +741,10 @@ app.get(
   '/api/admin/me',
   admin,
   (req, res) => {
-
     res.json({
       success: true,
       isAdmin: true
     });
-
   }
 );
 
@@ -808,24 +755,19 @@ app.get(
 app.post(
   '/api/admin/logout',
   (req, res) => {
-
     if (!req.session) {
-
       return res.json({
         success: true,
         message:
           'Admin logged out.'
       });
-
     }
 
     req.session.isAdmin = false;
     req.session.userId = null;
 
     req.session.save((error) => {
-
       if (error) {
-
         console.error(
           'Admin logout session error:',
           error
@@ -836,7 +778,6 @@ app.post(
           message:
             'Admin logout failed.'
         });
-
       }
 
       return res.json({
@@ -844,9 +785,7 @@ app.post(
         message:
           'Admin logged out.'
       });
-
     });
-
   }
 );
 
@@ -857,9 +796,7 @@ app.post(
 app.post(
   '/api/register',
   async (req, res) => {
-
     try {
-
       const name =
         String(
           req.body.name || ''
@@ -883,33 +820,27 @@ app.post(
         ).trim();
 
       if (!name) {
-
         return res.status(400).json({
           success: false,
           message: 'Name is required.'
         });
-
       }
 
       if (!phone) {
-
         return res.status(400).json({
           success: false,
           message: 'Phone is required.'
         });
-
       }
 
       if (
         password.length < 6
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Password must be at least 6 characters.'
         });
-
       }
 
       const existing =
@@ -918,13 +849,11 @@ app.post(
         });
 
       if (existing) {
-
         return res.status(409).json({
           success: false,
           message:
             'Phone number is already registered.'
         });
-
       }
 
       const salt =
@@ -939,7 +868,6 @@ app.post(
       let referralCode;
 
       for (;;) {
-
         referralCode =
           crypto
             .randomBytes(4)
@@ -955,13 +883,11 @@ app.post(
         if (!exists) {
           break;
         }
-
       }
 
       let referredBy = null;
 
       if (referral) {
-
         const referrer =
           await User.findOne({
             referral_code:
@@ -972,7 +898,6 @@ app.post(
           referredBy =
             referrer.referral_code;
         }
-
       }
 
       const user =
@@ -986,8 +911,6 @@ app.post(
             referralCode,
           referred_by:
             referredBy,
-
-          // New users are active by default
           banned: false
         });
 
@@ -1012,7 +935,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Register error:',
         error
@@ -1023,9 +945,7 @@ app.post(
         message:
           'Registration failed.'
       });
-
     }
-
   }
 );
 
@@ -1036,9 +956,7 @@ app.post(
 app.post(
   '/api/login',
   async (req, res) => {
-
     try {
-
       const phone =
         String(
           req.body.phone || ''
@@ -1050,13 +968,11 @@ app.post(
         );
 
       if (!phone || !password) {
-
         return res.status(400).json({
           success: false,
           message:
             'Phone and password are required.'
         });
-
       }
 
       const user =
@@ -1065,27 +981,19 @@ app.post(
         });
 
       if (!user) {
-
         return res.status(401).json({
           success: false,
           message:
             'Invalid phone or password.'
         });
-
       }
 
-      // =================================================
-      // BANNED USER BLOCK
-      // =================================================
-
       if (user.banned === true) {
-
         return res.status(403).json({
           success: false,
           message:
             'Your account has been banned.'
         });
-
       }
 
       const valid =
@@ -1096,13 +1004,11 @@ app.post(
         );
 
       if (!valid) {
-
         return res.status(401).json({
           success: false,
           message:
             'Invalid phone or password.'
         });
-
       }
 
       req.session.userId =
@@ -1119,7 +1025,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'User login error:',
         error
@@ -1130,9 +1035,7 @@ app.post(
         message:
           'Login failed.'
       });
-
     }
-
   }
 );
 
@@ -1144,21 +1047,17 @@ app.get(
   '/api/me',
   login,
   async (req, res) => {
-
     try {
-
       const user =
         await User.findById(
           req.session.userId
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message: 'User not found.'
         });
-
       }
 
       const wallet =
@@ -1177,7 +1076,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Me error:',
         error
@@ -1188,9 +1086,7 @@ app.get(
         message:
           'Unable to load account.'
       });
-
     }
-
   }
 );
 
@@ -1202,9 +1098,7 @@ app.get(
   '/api/wallet',
   login,
   async (req, res) => {
-
     try {
-
       const wallet =
         await ensureWallet(
           req.session.userId
@@ -1212,12 +1106,10 @@ app.get(
 
       return res.json({
         success: true,
-
         balance:
           Number(
             wallet.balance || 0
           ) / 100,
-
         balance_paise:
           Number(
             wallet.balance || 0
@@ -1225,7 +1117,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Wallet error:',
         error
@@ -1236,9 +1127,7 @@ app.get(
         message:
           'Unable to load wallet.'
       });
-
     }
-
   }
 );
 
@@ -1250,35 +1139,28 @@ app.get(
   '/api/referral',
   login,
   async (req, res) => {
-
     try {
-
       const user =
         await User.findById(
           req.session.userId
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message: 'User not found.'
         });
-
       }
 
       return res.json({
         success: true,
-
         referral_code:
           user.referral_code,
-
         referral_link:
           `${APP_URL || ''}/register.html?ref=${encodeURIComponent(user.referral_code)}`
       });
 
     } catch (error) {
-
       console.error(
         'Referral error:',
         error
@@ -1289,9 +1171,7 @@ app.get(
         message:
           'Unable to load referral.'
       });
-
     }
-
   }
 );
 
@@ -1303,21 +1183,17 @@ app.get(
   '/api/referrals',
   login,
   async (req, res) => {
-
     try {
-
       const user =
         await User.findById(
           req.session.userId
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message: 'User not found.'
         });
-
       }
 
       const referrals =
@@ -1338,7 +1214,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Referrals error:',
         error
@@ -1349,9 +1224,7 @@ app.get(
         message:
           'Unable to load referrals.'
       });
-
     }
-
   }
 );
 
@@ -1363,9 +1236,7 @@ app.post(
   '/api/payment/create-order',
   login,
   async (req, res) => {
-
     try {
-
       const amount =
         Number(req.body.amount);
 
@@ -1378,36 +1249,30 @@ app.post(
         !Number.isFinite(amount) ||
         amount < 200
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Minimum deposit amount is ₹200.'
         });
-
       }
 
       if (!RSPAY_MERCHANT_ID) {
-
         return res.status(500).json({
           success: false,
           message:
             'RS Payment merchant ID is not configured.'
         });
-
       }
 
       if (
         !RSPAY_WEBHOOK_URL ||
         !RSPAY_RETURN_URL
       ) {
-
         return res.status(500).json({
           success: false,
           message:
             'RS Payment callback URLs are not configured.'
         });
-
       }
 
       const merchantOrderId =
@@ -1460,7 +1325,6 @@ app.post(
           `${RSPAY_API_URL}?${params.toString()}`,
           {
             method: 'GET',
-
             headers: {
               Accept:
                 'application/json'
@@ -1474,14 +1338,11 @@ app.post(
       let result;
 
       try {
-
         result =
           JSON.parse(
             responseText
           );
-
       } catch (parseError) {
-
         console.error(
           'RS Payment returned non-JSON:',
           responseText
@@ -1492,11 +1353,9 @@ app.post(
           message:
             'RS Payment returned an invalid response.'
         });
-
       }
 
       if (!response.ok) {
-
         console.error(
           'RS Payment HTTP error:',
           result
@@ -1508,7 +1367,6 @@ app.post(
             result.message ||
             'RS Payment API request failed.'
         });
-
       }
 
       if (
@@ -1516,7 +1374,6 @@ app.post(
         !result.data ||
         !result.data.payUrl
       ) {
-
         console.error(
           'RS Payment API error:',
           result
@@ -1528,12 +1385,10 @@ app.post(
             result.message ||
             'RS Payment did not return a payment URL.'
         });
-
       }
 
       const payment =
         await Payment.create({
-
           user_id:
             req.session.userId,
 
@@ -1564,11 +1419,9 @@ app.post(
 
           created_at:
             new Date()
-
         });
 
       return res.json({
-
         success: true,
 
         paymentId:
@@ -1585,11 +1438,9 @@ app.post(
 
         currency:
           'INR'
-
       });
 
     } catch (error) {
-
       console.error(
         'RS Payment create error:',
         error
@@ -1600,9 +1451,7 @@ app.post(
         message:
           'Unable to create RS Payment order.'
       });
-
     }
-
   }
 );
 
@@ -1613,9 +1462,7 @@ app.post(
 app.post(
   '/api/payment/webhook',
   async (req, res) => {
-
     try {
-
       const {
         status,
         user_id,
@@ -1629,20 +1476,17 @@ app.post(
       );
 
       if (!merchant_order_id) {
-
         return res.status(400).json({
           success: false,
           message:
             'Missing merchant_order_id.'
         });
-
       }
 
       if (
         String(user_id || '') !==
         String(RSPAY_MERCHANT_ID)
       ) {
-
         console.error(
           'Invalid RS Payment merchant:',
           user_id
@@ -1653,7 +1497,6 @@ app.post(
           message:
             'Invalid merchant.'
         });
-
       }
 
       if (
@@ -1661,13 +1504,11 @@ app.post(
           .toLowerCase() !==
         'success'
       ) {
-
         return res.status(200).json({
           success: true,
           message:
             'Payment is not successful.'
         });
-
       }
 
       const payment =
@@ -1676,7 +1517,6 @@ app.post(
         });
 
       if (!payment) {
-
         console.error(
           'Payment not found:',
           merchant_order_id
@@ -1687,20 +1527,17 @@ app.post(
           message:
             'Payment order not found.'
         });
-
       }
 
       if (
         payment.status === 'paid' ||
         payment.status === 'captured'
       ) {
-
         return res.status(200).json({
           success: true,
           message:
             'Payment already processed.'
         });
-
       }
 
       const webhookAmount =
@@ -1718,7 +1555,6 @@ app.post(
           expectedAmount
         ) > 0.01
       ) {
-
         console.error(
           'Payment amount mismatch:',
           {
@@ -1733,17 +1569,14 @@ app.post(
           message:
             'Payment amount mismatch.'
         });
-
       }
 
       const mongoSession =
         await mongoose.startSession();
 
       try {
-
         await mongoSession.withTransaction(
           async () => {
-
             const freshPayment =
               await Payment.findOne({
                 merchant_order_id
@@ -1838,14 +1671,11 @@ app.post(
               session:
                 mongoSession
             });
-
           }
         );
 
       } finally {
-
         await mongoSession.endSession();
-
       }
 
       console.log(
@@ -1860,7 +1690,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'RS Payment webhook error:',
         error
@@ -1871,9 +1700,7 @@ app.post(
         message:
           'Webhook processing failed.'
       });
-
     }
-
   }
 );
 
@@ -1885,9 +1712,7 @@ app.get(
   '/api/payment/status/:orderId',
   login,
   async (req, res) => {
-
     try {
-
       const payment =
         await Payment.findOne({
           merchant_order_id:
@@ -1898,13 +1723,11 @@ app.get(
         });
 
       if (!payment) {
-
         return res.status(404).json({
           success: false,
           message:
             'Payment not found.'
         });
-
       }
 
       return res.json({
@@ -1924,7 +1747,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Payment status error:',
         error
@@ -1935,9 +1757,7 @@ app.get(
         message:
           'Unable to check payment status.'
       });
-
     }
-
   }
 );
 
@@ -1949,9 +1769,7 @@ app.get(
   '/api/orders',
   login,
   async (req, res) => {
-
     try {
-
       const payments =
         await Payment.find({
           user_id:
@@ -2002,7 +1820,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Orders error:',
         error
@@ -2013,9 +1830,7 @@ app.get(
         message:
           'Unable to load orders.'
       });
-
     }
-
   }
 );
 
@@ -2027,9 +1842,7 @@ app.post(
   '/api/withdrawals',
   login,
   async (req, res) => {
-
     try {
-
       const amount =
         Number(req.body.amount);
 
@@ -2070,54 +1883,45 @@ app.post(
         !Number.isFinite(amount) ||
         amount <= 0
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid withdrawal amount.'
         });
-
       }
 
       if (amount < 50) {
-
         return res.status(400).json({
           success: false,
           message:
             'Minimum withdrawal amount is ₹50.'
         });
-
       }
 
       if (
         method === 'UPI' &&
         !upiId
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'UPI ID is required.'
         });
-
       }
 
       if (
         method === 'BANK'
       ) {
-
         if (
           !accountName ||
           !accountNumber ||
           !ifsc
         ) {
-
           return res.status(400).json({
             success: false,
             message:
               'Bank account details are required.'
           });
-
         }
 
         if (
@@ -2125,13 +1929,11 @@ app.post(
           accountNumber !==
           confirmAccountNumber
         ) {
-
           return res.status(400).json({
             success: false,
             message:
               'Bank account numbers do not match.'
           });
-
         }
 
         if (
@@ -2139,15 +1941,12 @@ app.post(
             ifsc
           )
         ) {
-
           return res.status(400).json({
             success: false,
             message:
               'Invalid IFSC code.'
           });
-
         }
-
       }
 
       const amountPaise =
@@ -2161,10 +1960,8 @@ app.post(
       let withdrawal;
 
       try {
-
         await mongoSession.withTransaction(
           async () => {
-
             const wallet =
               await ensureWallet(
                 req.session.userId,
@@ -2180,11 +1977,9 @@ app.post(
               balance <
               amountPaise
             ) {
-
               throw new Error(
                 'Insufficient wallet balance.'
               );
-
             }
 
             const newBalance =
@@ -2285,31 +2080,25 @@ app.post(
                   mongoSession
               }
             );
-
           }
         );
 
       } catch (error) {
-
         if (
           error.message ===
           'Insufficient wallet balance.'
         ) {
-
           return res.status(400).json({
             success: false,
             message:
               error.message
           });
-
         }
 
         throw error;
 
       } finally {
-
         await mongoSession.endSession();
-
       }
 
       return res.json({
@@ -2331,7 +2120,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Withdrawal error:',
         error
@@ -2342,9 +2130,7 @@ app.post(
         message:
           'Unable to submit withdrawal request.'
       });
-
     }
-
   }
 );
 
@@ -2356,9 +2142,7 @@ app.get(
   '/api/withdrawals',
   login,
   async (req, res) => {
-
     try {
-
       const withdrawals =
         await Withdrawal.find({
           user_id:
@@ -2414,7 +2198,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Withdrawal history error:',
         error
@@ -2425,9 +2208,7 @@ app.get(
         message:
           'Unable to load withdrawals.'
       });
-
     }
-
   }
 );
 
@@ -2439,9 +2220,7 @@ app.get(
   '/api/admin/users',
   admin,
   async (req, res) => {
-
     try {
-
       const users =
         await User.find()
           .select(
@@ -2455,7 +2234,6 @@ app.get(
       const result = [];
 
       for (const user of users) {
-
         const wallet =
           await Wallet.findOne({
             user_id:
@@ -2463,7 +2241,6 @@ app.get(
           }).lean();
 
         result.push({
-
           id:
             user._id,
 
@@ -2484,12 +2261,9 @@ app.get(
               wallet?.balance || 0
             ) / 100,
 
-          // New status for dashboard
           banned:
             user.banned === true
-
         });
-
       }
 
       return res.json({
@@ -2499,7 +2273,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Admin users error:',
         error
@@ -2510,9 +2283,7 @@ app.get(
         message:
           'Unable to load users.'
       });
-
     }
-
   }
 );
 
@@ -2524,9 +2295,7 @@ app.post(
   '/api/admin/users/:userId/ban',
   admin,
   async (req, res) => {
-
     try {
-
       const userId =
         req.params.userId;
 
@@ -2535,13 +2304,11 @@ app.post(
           userId
         )
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid user ID.'
         });
-
       }
 
       const user =
@@ -2550,23 +2317,19 @@ app.post(
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message:
             'User not found.'
         });
-
       }
 
       if (user.banned === true) {
-
         return res.json({
           success: true,
           message:
             'User is already banned.'
         });
-
       }
 
       user.banned = true;
@@ -2580,7 +2343,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Admin ban user error:',
         error
@@ -2591,9 +2353,7 @@ app.post(
         message:
           'Unable to ban user.'
       });
-
     }
-
   }
 );
 
@@ -2605,9 +2365,7 @@ app.post(
   '/api/admin/users/:userId/unban',
   admin,
   async (req, res) => {
-
     try {
-
       const userId =
         req.params.userId;
 
@@ -2616,13 +2374,11 @@ app.post(
           userId
         )
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid user ID.'
         });
-
       }
 
       const user =
@@ -2631,23 +2387,19 @@ app.post(
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message:
             'User not found.'
         });
-
       }
 
       if (user.banned !== true) {
-
         return res.json({
           success: true,
           message:
             'User is already active.'
         });
-
       }
 
       user.banned = false;
@@ -2661,7 +2413,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Admin unban user error:',
         error
@@ -2672,9 +2423,7 @@ app.post(
         message:
           'Unable to unban user.'
       });
-
     }
-
   }
 );
 
@@ -2686,9 +2435,7 @@ app.post(
   '/api/admin/users/:userId/login-as',
   admin,
   async (req, res) => {
-
     try {
-
       const userId =
         req.params.userId;
 
@@ -2697,13 +2444,11 @@ app.post(
           userId
         )
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid user ID.'
         });
-
       }
 
       const user =
@@ -2712,37 +2457,24 @@ app.post(
         );
 
       if (!user) {
-
         return res.status(404).json({
           success: false,
           message:
             'User not found.'
         });
-
       }
 
-      // Do not allow login into a banned account
       if (user.banned === true) {
-
         return res.status(403).json({
           success: false,
           message:
             'This user is banned. Unban the user first.'
         });
-
       }
-
-      // ===============================================
-      // CREATE A FRESH SESSION
-      // Admin session becomes user session.
-      // isAdmin = false intentionally.
-      // ===============================================
 
       req.session.regenerate(
         (regenerateError) => {
-
           if (regenerateError) {
-
             console.error(
               'Login-as session regenerate error:',
               regenerateError
@@ -2753,7 +2485,6 @@ app.post(
               message:
                 'Unable to create user session.'
             });
-
           }
 
           req.session.userId =
@@ -2764,9 +2495,7 @@ app.post(
 
           req.session.save(
             (saveError) => {
-
               if (saveError) {
-
                 console.error(
                   'Login-as session save error:',
                   saveError
@@ -2777,7 +2506,6 @@ app.post(
                   message:
                     'Unable to save user session.'
                 });
-
               }
 
               return res.json({
@@ -2789,15 +2517,12 @@ app.post(
                 user:
                   safeUser(user)
               });
-
             }
           );
-
         }
       );
 
     } catch (error) {
-
       console.error(
         'Admin login-as-user error:',
         error
@@ -2808,9 +2533,7 @@ app.post(
         message:
           'Unable to login as user.'
       });
-
     }
-
   }
 );
 
@@ -2822,9 +2545,7 @@ app.post(
   '/api/admin/users/:userId/balance',
   admin,
   async (req, res) => {
-
     try {
-
       const userId =
         req.params.userId;
 
@@ -2847,13 +2568,11 @@ app.post(
         !Number.isFinite(amount) ||
         amount <= 0
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid amount.'
         });
-
       }
 
       if (
@@ -2861,13 +2580,11 @@ app.post(
           type
         )
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Invalid adjustment type.'
         });
-
       }
 
       const amountPaise =
@@ -2881,10 +2598,8 @@ app.post(
       let newBalance;
 
       try {
-
         await mongoSession.withTransaction(
           async () => {
-
             const user =
               await User.findById(
                 userId
@@ -2914,27 +2629,21 @@ app.post(
               oldBalance <
               amountPaise
             ) {
-
               throw new Error(
                 'Insufficient wallet balance.'
               );
-
             }
 
             if (
               type === 'credit'
             ) {
-
               newBalance =
                 oldBalance +
                 amountPaise;
-
             } else {
-
               newBalance =
                 oldBalance -
                 amountPaise;
-
             }
 
             wallet.balance =
@@ -2980,33 +2689,27 @@ app.post(
                   mongoSession
               }
             );
-
           }
         );
 
       } catch (error) {
-
         if (
           error.message ===
             'User not found.' ||
           error.message ===
             'Insufficient wallet balance.'
         ) {
-
           return res.status(400).json({
             success: false,
             message:
               error.message
           });
-
         }
 
         throw error;
 
       } finally {
-
         await mongoSession.endSession();
-
       }
 
       return res.json({
@@ -3020,7 +2723,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Admin balance error:',
         error
@@ -3031,9 +2733,7 @@ app.post(
         message:
           'Unable to update balance.'
       });
-
     }
-
   }
 );
 
@@ -3045,9 +2745,7 @@ app.get(
   '/api/admin/withdrawals',
   admin,
   async (req, res) => {
-
     try {
-
       const withdrawals =
         await Withdrawal.find()
           .populate(
@@ -3065,7 +2763,6 @@ app.get(
         withdrawals:
           withdrawals.map(
             item => ({
-
               id:
                 item._id,
 
@@ -3114,13 +2811,11 @@ app.get(
 
               processed_at:
                 item.processed_at
-
             })
           )
       });
 
     } catch (error) {
-
       console.error(
         'Admin withdrawals error:',
         error
@@ -3131,9 +2826,7 @@ app.get(
         message:
           'Unable to load withdrawals.'
       });
-
     }
-
   }
 );
 
@@ -3145,35 +2838,29 @@ app.post(
   '/api/admin/withdrawals/:id/processing',
   admin,
   async (req, res) => {
-
     try {
-
       const withdrawal =
         await Withdrawal.findById(
           req.params.id
         );
 
       if (!withdrawal) {
-
         return res.status(404).json({
           success: false,
           message:
             'Withdrawal not found.'
         });
-
       }
 
       if (
         withdrawal.status !==
         'pending'
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Only pending withdrawals can be moved to processing.'
         });
-
       }
 
       withdrawal.status =
@@ -3188,7 +2875,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Processing withdrawal error:',
         error
@@ -3199,9 +2885,7 @@ app.post(
         message:
           'Unable to process withdrawal.'
       });
-
     }
-
   }
 );
 
@@ -3213,35 +2897,29 @@ app.post(
   '/api/admin/withdrawals/:id/complete',
   admin,
   async (req, res) => {
-
     try {
-
       const withdrawal =
         await Withdrawal.findById(
           req.params.id
         );
 
       if (!withdrawal) {
-
         return res.status(404).json({
           success: false,
           message:
             'Withdrawal not found.'
         });
-
       }
 
       if (
         withdrawal.status !==
         'processing'
       ) {
-
         return res.status(400).json({
           success: false,
           message:
             'Withdrawal must be processing before completion.'
         });
-
       }
 
       withdrawal.status =
@@ -3259,7 +2937,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Complete withdrawal error:',
         error
@@ -3270,9 +2947,7 @@ app.post(
         message:
           'Unable to complete withdrawal.'
       });
-
     }
-
   }
 );
 
@@ -3284,15 +2959,12 @@ app.post(
   '/api/admin/withdrawals/:id/reject',
   admin,
   async (req, res) => {
-
     const mongoSession =
       await mongoose.startSession();
 
     try {
-
       await mongoSession.withTransaction(
         async () => {
-
           const withdrawal =
             await Withdrawal.findById(
               req.params.id
@@ -3310,11 +2982,9 @@ app.post(
             withdrawal.status !==
             'pending'
           ) {
-
             throw new Error(
               'Withdrawal is already processed.'
             );
-
           }
 
           const wallet =
@@ -3388,7 +3058,6 @@ app.post(
             session:
               mongoSession
           });
-
         }
       );
 
@@ -3399,7 +3068,6 @@ app.post(
       });
 
     } catch (error) {
-
       console.error(
         'Reject withdrawal error:',
         error
@@ -3413,11 +3081,8 @@ app.post(
       });
 
     } finally {
-
       await mongoSession.endSession();
-
     }
-
   }
 );
 
@@ -3429,9 +3094,7 @@ app.get(
   '/api/admin/summary',
   admin,
   async (req, res) => {
-
     try {
-
       const totalUsers =
         await User.countDocuments();
 
@@ -3462,7 +3125,6 @@ app.get(
         await Withdrawal.aggregate([
           {
             $group: {
-
               _id:
                 '$status',
 
@@ -3478,7 +3140,6 @@ app.get(
               count: {
                 $sum: 1
               }
-
             }
           }
         ]);
@@ -3492,7 +3153,6 @@ app.get(
       for (
         const item of withdrawalResult
       ) {
-
         const status =
           String(
             item._id || ''
@@ -3511,33 +3171,26 @@ app.get(
         if (
           status === 'pending'
         ) {
-
           pendingWithdrawals =
             count;
-
         }
 
         if (
           status === 'processing'
         ) {
-
           processingWithdrawals =
             count;
-
         }
 
         if (
           status === 'completed'
         ) {
-
           completedWithdrawals =
             count;
 
           totalWithdrawnPaise +=
             amount;
-
         }
-
       }
 
       const paymentResult =
@@ -3555,7 +3208,6 @@ app.get(
 
           {
             $group: {
-
               _id: null,
 
               totalAmount: {
@@ -3570,7 +3222,6 @@ app.get(
               count: {
                 $sum: 1
               }
-
             }
           }
         ]);
@@ -3586,7 +3237,6 @@ app.get(
         );
 
       return res.json({
-
         success: true,
 
         total_users:
@@ -3630,11 +3280,9 @@ app.get(
 
         total_payments:
           totalPaymentsPaise / 100
-
       });
 
     } catch (error) {
-
       console.error(
         'Admin summary error:',
         error
@@ -3645,9 +3293,7 @@ app.get(
         message:
           'Unable to load summary.'
       });
-
     }
-
   }
 );
 
@@ -3659,9 +3305,7 @@ app.get(
   '/api/admin/total-users',
   admin,
   async (req, res) => {
-
     try {
-
       const count =
         await User.countDocuments();
 
@@ -3672,7 +3316,6 @@ app.get(
       });
 
     } catch (error) {
-
       console.error(
         'Admin total users error:',
         error
@@ -3683,9 +3326,7 @@ app.get(
         message:
           'Unable to get total users.'
       });
-
     }
-
   }
 );
 
@@ -3696,22 +3337,17 @@ app.get(
 app.post(
   '/api/logout',
   (req, res) => {
-
     if (!req.session) {
-
       return res.json({
         success: true,
         message:
           'Logged out successfully.'
       });
-
     }
 
     req.session.destroy(
       error => {
-
         if (error) {
-
           console.error(
             'Logout error:',
             error
@@ -3722,7 +3358,6 @@ app.post(
             message:
               'Logout failed.'
           });
-
         }
 
         res.clearCookie(
@@ -3734,10 +3369,8 @@ app.post(
           message:
             'Logged out successfully.'
         });
-
       }
     );
-
   }
 );
 
@@ -3758,14 +3391,12 @@ app.use(
 app.get(
   '/',
   (req, res) => {
-
     res.sendFile(
       path.join(
         __dirname,
         'index.html'
       )
     );
-
   }
 );
 
@@ -3780,7 +3411,6 @@ app.use(
     res,
     next
   ) => {
-
     console.error(
       'Unhandled server error:',
       err
@@ -3795,7 +3425,6 @@ app.use(
       message:
         'Internal server error.'
     });
-
   }
 );
 
@@ -3804,9 +3433,7 @@ app.use(
 // =====================================================
 
 async function startServer() {
-
   try {
-
     await mongoose.connect(
       MONGO_URI
     );
@@ -3825,25 +3452,20 @@ async function startServer() {
     app.listen(
       PORT,
       () => {
-
         console.log(
           `TRUE WALK server running on port ${PORT}`
         );
-
       }
     );
 
   } catch (error) {
-
     console.error(
       'MongoDB connection failed:',
       error
     );
 
     process.exit(1);
-
   }
-
 }
 
 startServer();
