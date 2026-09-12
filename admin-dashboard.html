@@ -165,7 +165,7 @@ button{
 table{
   width:100%;
   border-collapse:collapse;
-  min-width:850px;
+  min-width:1050px;
 }
 
 th,td{
@@ -242,6 +242,23 @@ th{
 
 .wallet-btn{
   background:#7c3aed;
+}
+
+/* NEW USER ACTIONS */
+.ban-btn{
+  background:#dc2626;
+}
+
+.unban-btn{
+  background:#16a34a;
+}
+
+.login-btn{
+  background:#2563eb;
+}
+
+.banned-row{
+  background:#fff7f7;
 }
 
 /* EMPTY */
@@ -601,6 +618,8 @@ th{
               <th>Balance</th>
               <th>Registered</th>
               <th>Wallet</th>
+              <th>Account</th>
+              <th>Login</th>
             </tr>
 
           </thead>
@@ -608,7 +627,7 @@ th{
           <tbody id="usersBody">
 
             <tr>
-              <td colspan="6" class="empty">
+              <td colspan="8" class="empty">
                 Loading users...
               </td>
             </tr>
@@ -671,7 +690,6 @@ th{
         type="hidden"
         id="walletUserId"
       >
-
 
       <div class="form-group">
 
@@ -1020,7 +1038,7 @@ function renderUsers(users) {
       <tr>
 
         <td
-          colspan="6"
+          colspan="8"
           class="empty">
 
           No users found.
@@ -1061,9 +1079,23 @@ function renderUsers(users) {
         );
 
 
+      const banned =
+        user.banned === true;
+
+
+      const userData =
+        JSON.stringify({
+          id,
+          name,
+          phone,
+          balance
+        })
+        .replace(/'/g,"&#039;");
+
+
       return `
 
-        <tr>
+        <tr class="${banned ? "banned-row" : ""}">
 
           <td>
             ${escapeHtml(id)}
@@ -1073,6 +1105,21 @@ function renderUsers(users) {
             <strong>
               ${escapeHtml(name)}
             </strong>
+
+            ${
+              banned
+                ? `
+                  <div style="
+                    color:#dc2626;
+                    font-size:10px;
+                    font-weight:700;
+                    margin-top:4px;">
+                    BANNED
+                  </div>
+                `
+                : ""
+            }
+
           </td>
 
           <td>
@@ -1093,14 +1140,45 @@ function renderUsers(users) {
 
             <button
               class="action wallet-btn"
-              onclick='openWalletModal(${JSON.stringify({
-                id,
-                name,
-                phone,
-                balance
-              })})'
-            >
+              onclick='openWalletModal(${userData})'>
               💰 Manage Wallet
+            </button>
+
+          </td>
+
+          <td>
+
+            <div class="actions">
+
+              ${
+                banned
+                  ? `
+                    <button
+                      class="action unban-btn"
+                      onclick="unbanUser('${escapeHtml(id)}')">
+                      🟢 Unban
+                    </button>
+                  `
+                  : `
+                    <button
+                      class="action ban-btn"
+                      onclick="banUser('${escapeHtml(id)}')">
+                      🔴 Ban
+                    </button>
+                  `
+              }
+
+            </div>
+
+          </td>
+
+          <td>
+
+            <button
+              class="action login-btn"
+              onclick="loginAsUser('${escapeHtml(id)}')"
+              ${banned ? "disabled style='opacity:.5;cursor:not-allowed;'" : ""}>
+              🔐 Login
             </button>
 
           </td>
@@ -1216,6 +1294,194 @@ function renderWalletUsers(users) {
       `;
 
     }).join("");
+}
+
+
+/* =========================================================
+   BAN USER
+========================================================= */
+
+async function banUser(userId) {
+
+  const confirmed =
+    confirm(
+      "Are you sure you want to ban this user?"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const result =
+      await api(
+        `/api/admin/users/${encodeURIComponent(userId)}/ban`,
+        {
+          method:"POST"
+        }
+      );
+
+
+    if (!result.success) {
+
+      throw new Error(
+        result.message ||
+        "Unable to ban user."
+      );
+
+    }
+
+
+    alert(
+      result.message ||
+      "User banned successfully."
+    );
+
+
+    await refreshAll();
+
+
+  } catch (error) {
+
+    console.error(
+      "BAN USER ERROR:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Unable to ban user."
+    );
+
+  }
+}
+
+
+/* =========================================================
+   UNBAN USER
+========================================================= */
+
+async function unbanUser(userId) {
+
+  const confirmed =
+    confirm(
+      "Are you sure you want to unban this user?"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const result =
+      await api(
+        `/api/admin/users/${encodeURIComponent(userId)}/unban`,
+        {
+          method:"POST"
+        }
+      );
+
+
+    if (!result.success) {
+
+      throw new Error(
+        result.message ||
+        "Unable to unban user."
+      );
+
+    }
+
+
+    alert(
+      result.message ||
+      "User unbanned successfully."
+    );
+
+
+    await refreshAll();
+
+
+  } catch (error) {
+
+    console.error(
+      "UNBAN USER ERROR:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Unable to unban user."
+    );
+
+  }
+}
+
+
+/* =========================================================
+   DIRECT USER LOGIN
+========================================================= */
+
+async function loginAsUser(userId) {
+
+  const confirmed =
+    confirm(
+      "You are about to login as this user.\n\n" +
+      "Continue?"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const result =
+      await api(
+        `/api/admin/users/${encodeURIComponent(userId)}/login-as`,
+        {
+          method:"POST"
+        }
+      );
+
+
+    if (!result.success) {
+
+      throw new Error(
+        result.message ||
+        "Unable to login as user."
+      );
+
+    }
+
+
+    window.location.href =
+      "/home.html";
+
+
+  } catch (error) {
+
+    console.error(
+      "LOGIN AS USER ERROR:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Unable to login as user."
+    );
+
+  }
 }
 
 
