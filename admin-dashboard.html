@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>TRUE WALK - Admin Dashboard</title>
 
 <style>
@@ -165,7 +166,7 @@ button{
 table{
   width:100%;
   border-collapse:collapse;
-  min-width:1050px;
+  min-width:1150px;
 }
 
 th,td{
@@ -244,7 +245,7 @@ th{
   background:#7c3aed;
 }
 
-/* NEW USER ACTIONS */
+/* USER ACTIONS */
 .ban-btn{
   background:#dc2626;
 }
@@ -255,6 +256,33 @@ th{
 
 .login-btn{
   background:#2563eb;
+}
+
+/* VIP 5 */
+.vip5-btn{
+  background:#f59e0b;
+  color:#fff;
+}
+
+.vip5-on{
+  background:#16a34a;
+  color:#fff;
+}
+
+.vip5-off{
+  background:#f59e0b;
+  color:#fff;
+}
+
+.vip5-badge{
+  display:inline-block;
+  margin-top:5px;
+  padding:4px 7px;
+  border-radius:10px;
+  background:#fef3c7;
+  color:#92400e;
+  font-size:10px;
+  font-weight:800;
 }
 
 .banned-row{
@@ -618,6 +646,7 @@ th{
               <th>Balance</th>
               <th>Registered</th>
               <th>Wallet</th>
+              <th>VIP 5</th>
               <th>Account</th>
               <th>Login</th>
             </tr>
@@ -627,7 +656,7 @@ th{
           <tbody id="usersBody">
 
             <tr>
-              <td colspan="8" class="empty">
+              <td colspan="9" class="empty">
                 Loading users...
               </td>
             </tr>
@@ -1025,6 +1054,10 @@ async function loadUsers() {
 }
 
 
+/* =========================================================
+   RENDER USERS
+========================================================= */
+
 function renderUsers(users) {
 
   const body =
@@ -1038,7 +1071,7 @@ function renderUsers(users) {
       <tr>
 
         <td
-          colspan="8"
+          colspan="9"
           class="empty">
 
           No users found.
@@ -1083,6 +1116,10 @@ function renderUsers(users) {
         user.banned === true;
 
 
+      const vip5 =
+        user.vip5 === true;
+
+
       const userData =
         JSON.stringify({
           id,
@@ -1102,6 +1139,7 @@ function renderUsers(users) {
           </td>
 
           <td>
+
             <strong>
               ${escapeHtml(name)}
             </strong>
@@ -1136,6 +1174,8 @@ function renderUsers(users) {
             )}
           </td>
 
+          <!-- WALLET -->
+
           <td>
 
             <button
@@ -1145,6 +1185,49 @@ function renderUsers(users) {
             </button>
 
           </td>
+
+
+          <!-- VIP 5 -->
+
+          <td>
+
+            ${
+              vip5
+                ? `
+
+                  <div>
+
+                    <span class="vip5-badge">
+                      ⭐ VIP 5 ACTIVE
+                    </span>
+
+                    <br>
+
+                    <button
+                      class="action vip5-off"
+                      style="margin-top:6px;"
+                      onclick="setVip5('${escapeHtml(id)}', false)">
+                      Disable
+                    </button>
+
+                  </div>
+
+                `
+                : `
+
+                  <button
+                    class="action vip5-btn"
+                    onclick="setVip5('${escapeHtml(id)}', true)">
+                    ⭐ Enable VIP 5
+                  </button>
+
+                `
+            }
+
+          </td>
+
+
+          <!-- ACCOUNT -->
 
           <td>
 
@@ -1172,6 +1255,9 @@ function renderUsers(users) {
 
           </td>
 
+
+          <!-- LOGIN -->
+
           <td>
 
             <button
@@ -1190,6 +1276,10 @@ function renderUsers(users) {
     }).join("");
 }
 
+
+/* =========================================================
+   WALLET USERS
+========================================================= */
 
 function renderWalletUsers(users) {
 
@@ -1294,6 +1384,88 @@ function renderWalletUsers(users) {
       `;
 
     }).join("");
+}
+
+
+/* =========================================================
+   VIP 5 MANAGEMENT
+========================================================= */
+
+async function setVip5(userId, enabled) {
+
+  const confirmed =
+    confirm(
+      enabled
+        ? "Enable VIP 5 for this user?"
+        : "Disable VIP 5 for this user?"
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  try {
+
+    const result =
+      await api(
+        `/api/admin/users/${encodeURIComponent(userId)}/vip5`,
+        {
+
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json",
+
+            "Accept":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              enabled
+            })
+
+        }
+      );
+
+
+    if (!result.success) {
+
+      throw new Error(
+        result.message ||
+        "Unable to update VIP 5."
+      );
+
+    }
+
+
+    alert(
+      enabled
+        ? "VIP 5 enabled successfully."
+        : "VIP 5 disabled successfully."
+    );
+
+
+    await refreshAll();
+
+
+  } catch (error) {
+
+    console.error(
+      "VIP 5 ERROR:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "Unable to update VIP 5."
+    );
+
+  }
 }
 
 
@@ -1482,6 +1654,7 @@ async function loginAsUser(userId) {
     );
 
   }
+
 }
 
 
