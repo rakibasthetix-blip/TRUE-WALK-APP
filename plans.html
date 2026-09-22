@@ -14,10 +14,15 @@
       font-family: Arial, sans-serif;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       background: #050505;
       color: white;
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
     header {
@@ -46,6 +51,7 @@
       justify-content: center;
       font-weight: 900;
       font-size: 17px;
+      flex-shrink: 0;
     }
 
     .brand-text h1 {
@@ -62,7 +68,7 @@
     .container {
       max-width: 1200px;
       margin: auto;
-      padding: 35px 20px;
+      padding: 35px 20px 45px;
     }
 
     .page-title {
@@ -85,6 +91,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 22px;
+      align-items: stretch;
     }
 
     .plan-card {
@@ -93,17 +100,65 @@
       border-radius: 18px;
       overflow: hidden;
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+
+      display: flex;
+      flex-direction: column;
+
+      transition:
+        transform .25s ease,
+        border-color .25s ease,
+        box-shadow .25s ease;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-5px);
+      border-color: #383838;
+      box-shadow: 0 16px 38px rgba(0,0,0,0.48);
+    }
+
+    /*
+      VIP IMAGE FIX
+      ----------------
+      contain = complete image visible
+      no cropping
+    */
+
+    .plan-image-box {
+      width: 100%;
+      height: 230px;
+
+      background: #080808;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      overflow: hidden;
+
+      border-bottom: 1px solid #1e1e1e;
     }
 
     .plan-image {
       width: 100%;
-      height: 190px;
-      object-fit: cover;
+      height: 100%;
+
+      object-fit: contain;
+      object-position: center;
+
       display: block;
+
+      padding: 8px;
+
+      background: #080808;
     }
 
     .plan-content {
       padding: 20px;
+
+      display: flex;
+      flex-direction: column;
+
+      flex: 1;
     }
 
     .vip-title {
@@ -112,12 +167,29 @@
       margin-bottom: 10px;
     }
 
-    .vip1 .vip-title { color: #8cff3f; }
-    .vip2 .vip-title { color: #36bfff; }
-    .vip3 .vip-title { color: #ffc83d; }
-    .vip4 .vip-title { color: #ff4b38; }
-    .vip5 .vip-title { color: #d05cff; }
-    .vip6 .vip-title { color: #ffb51b; }
+    .vip1 .vip-title {
+      color: #8cff3f;
+    }
+
+    .vip2 .vip-title {
+      color: #36bfff;
+    }
+
+    .vip3 .vip-title {
+      color: #ffc83d;
+    }
+
+    .vip4 .vip-title {
+      color: #ff4b38;
+    }
+
+    .vip5 .vip-title {
+      color: #d05cff;
+    }
+
+    .vip6 .vip-title {
+      color: #ffb51b;
+    }
 
     .price {
       font-size: 30px;
@@ -135,7 +207,11 @@
     .detail-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+
       padding: 7px 0;
+
       font-size: 14px;
     }
 
@@ -145,35 +221,79 @@
 
     .detail-row span:last-child {
       font-weight: bold;
+      text-align: right;
     }
 
     .select-btn {
       width: 100%;
+
+      margin-top: auto;
+
       border: none;
       border-radius: 10px;
+
       padding: 13px;
+
       font-size: 15px;
       font-weight: 900;
+
       cursor: pointer;
+
       color: #000;
+
+      transition:
+        transform .2s ease,
+        filter .2s ease;
     }
 
-    .vip1 .select-btn { background: #8cff3f; }
-    .vip2 .select-btn { background: #36bfff; }
-    .vip3 .select-btn { background: #ffc83d; }
-    .vip4 .select-btn { background: #ff4b38; }
-    .vip5 .select-btn { background: #d05cff; }
-    .vip6 .select-btn { background: #ffb51b; }
+    .select-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .select-btn:active {
+      transform: scale(.98);
+    }
+
+    .vip1 .select-btn {
+      background: #8cff3f;
+    }
+
+    .vip2 .select-btn {
+      background: #36bfff;
+    }
+
+    .vip3 .select-btn {
+      background: #ffc83d;
+    }
+
+    .vip4 .select-btn {
+      background: #ff4b38;
+    }
+
+    .vip5 .select-btn {
+      background: #d05cff;
+    }
+
+    .vip6 .select-btn {
+      background: #ffb51b;
+    }
 
     .trust {
       margin-top: 40px;
+
       padding: 20px;
+
       border: 1px solid #222;
       border-radius: 15px;
+
       background: #0b0b0b;
+
       display: grid;
       grid-template-columns: repeat(4, 1fr);
+
       gap: 15px;
+
       text-align: center;
     }
 
@@ -184,64 +304,221 @@
 
     .trust-item strong {
       display: block;
+
       color: #ffd21f;
+
       margin-bottom: 5px;
+
       font-size: 14px;
     }
 
+    /* =========================
+       TABLET
+    ========================= */
+
     @media (max-width: 900px) {
+
       .plans-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      .plan-image-box {
+        height: 220px;
+      }
+
     }
 
+    /* =========================
+       MOBILE
+    ========================= */
+
     @media (max-width: 600px) {
+
+      header {
+        padding: 15px 16px;
+      }
+
+      .logo-circle {
+        width: 39px;
+        height: 39px;
+        font-size: 15px;
+      }
+
+      .brand-text h1 {
+        font-size: 18px;
+      }
+
+      .container {
+        padding:
+          28px 13px 35px;
+      }
+
+      .page-title {
+        margin-bottom: 25px;
+      }
+
+      .page-title h2 {
+        font-size: 27px;
+      }
+
+      .page-title p {
+        font-size: 13px;
+      }
+
       .plans-grid {
         grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      /*
+        Mobile image area
+        Full image remains visible
+      */
+
+      .plan-image-box {
+        height: 235px;
+      }
+
+      .plan-image {
+        padding: 7px;
+      }
+
+      .plan-content {
+        padding: 18px;
+      }
+
+      .vip-title {
+        font-size: 23px;
+      }
+
+      .price {
+        font-size: 29px;
       }
 
       .trust {
         grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+
+        padding: 16px;
+        margin-top: 28px;
       }
 
-      .page-title h2 {
-        font-size: 26px;
+      .trust-item {
+        font-size: 11px;
       }
+
+      .trust-item strong {
+        font-size: 13px;
+      }
+
     }
+
+    /* =========================
+       SMALL PHONES
+    ========================= */
+
+    @media (max-width: 380px) {
+
+      .container {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .plan-image-box {
+        height: 220px;
+      }
+
+      .plan-content {
+        padding: 16px;
+      }
+
+      .detail-row {
+        font-size: 13px;
+      }
+
+      .trust {
+        padding: 13px;
+      }
+
+    }
+
   </style>
 </head>
 
 <body>
 
 <header>
+
   <div class="brand">
-    <div class="logo-circle">TW</div>
+
+    <div class="logo-circle">
+      TW
+    </div>
 
     <div class="brand-text">
-      <h1>TRUE WALK</h1>
-      <p>VIP Plans</p>
+
+      <h1>
+        TRUE WALK
+      </h1>
+
+      <p>
+        VIP Plans
+      </p>
+
     </div>
+
   </div>
+
 </header>
+
 
 <div class="container">
 
   <div class="page-title">
-    <h2>VIP Plans</h2>
-    <p>Choose your preferred plan</p>
+
+    <h2>
+      VIP Plans
+    </h2>
+
+    <p>
+      Choose your preferred plan
+    </p>
+
   </div>
+
 
   <div class="plans-grid">
 
-    <!-- VIP 1 -->
+
+    <!-- =========================
+         VIP 1
+    ========================== -->
+
     <div class="plan-card vip1">
-      <img src="assets/vip1.png" alt="VIP 1" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip1.png"
+          alt="VIP 1"
+          class="plan-image"
+          loading="eager"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 1</div>
-        <div class="price">₹900</div>
+
+        <div class="vip-title">
+          VIP 1
+        </div>
+
+        <div class="price">
+          ₹900
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>2 Days</span>
@@ -261,25 +538,50 @@
             <span>Limit</span>
             <span>0 / 5</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 1', 900)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 1', 900)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
 
 
-    <!-- VIP 2 -->
+    <!-- =========================
+         VIP 2
+    ========================== -->
+
     <div class="plan-card vip2">
-      <img src="assets/vip2.png" alt="VIP 2" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip2.png"
+          alt="VIP 2"
+          class="plan-image"
+          loading="lazy"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 2</div>
-        <div class="price">₹295</div>
+
+        <div class="vip-title">
+          VIP 2
+        </div>
+
+        <div class="price">
+          ₹295
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>45 Days</span>
@@ -299,25 +601,50 @@
             <span>Limit</span>
             <span>0 / 10</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 2', 295)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 2', 295)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
 
 
-    <!-- VIP 3 -->
+    <!-- =========================
+         VIP 3
+    ========================== -->
+
     <div class="plan-card vip3">
-      <img src="assets/vip3.png" alt="VIP 3" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip3.png"
+          alt="VIP 3"
+          class="plan-image"
+          loading="lazy"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 3</div>
-        <div class="price">₹550</div>
+
+        <div class="vip-title">
+          VIP 3
+        </div>
+
+        <div class="price">
+          ₹550
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>10 Days</span>
@@ -337,25 +664,50 @@
             <span>Limit</span>
             <span>0 / 10</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 3', 550)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 3', 550)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
 
 
-    <!-- VIP 4 -->
+    <!-- =========================
+         VIP 4
+    ========================== -->
+
     <div class="plan-card vip4">
-      <img src="assets/vip4.png" alt="VIP 4" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip4.png"
+          alt="VIP 4"
+          class="plan-image"
+          loading="lazy"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 4</div>
-        <div class="price">₹1,100</div>
+
+        <div class="vip-title">
+          VIP 4
+        </div>
+
+        <div class="price">
+          ₹1,100
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>7 Days</span>
@@ -375,25 +727,50 @@
             <span>Limit</span>
             <span>0 / 10</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 4', 1100)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 4', 1100)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
 
 
-    <!-- VIP 5 -->
+    <!-- =========================
+         VIP 5
+    ========================== -->
+
     <div class="plan-card vip5">
-      <img src="assets/vip5.png" alt="VIP 5" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip5.png"
+          alt="VIP 5"
+          class="plan-image"
+          loading="lazy"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 5</div>
-        <div class="price">₹2,500</div>
+
+        <div class="vip-title">
+          VIP 5
+        </div>
+
+        <div class="price">
+          ₹2,500
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>5 Days</span>
@@ -413,25 +790,50 @@
             <span>Limit</span>
             <span>0 / 5</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 5', 2500)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 5', 2500)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
 
 
-    <!-- VIP 6 -->
+    <!-- =========================
+         VIP 6
+    ========================== -->
+
     <div class="plan-card vip6">
-      <img src="assets/vip6.png" alt="VIP 6" class="plan-image">
+
+      <div class="plan-image-box">
+
+        <img
+          src="assets/vip6.png"
+          alt="VIP 6"
+          class="plan-image"
+          loading="lazy"
+        >
+
+      </div>
 
       <div class="plan-content">
-        <div class="vip-title">VIP 6</div>
-        <div class="price">₹4,999</div>
+
+        <div class="vip-title">
+          VIP 6
+        </div>
+
+        <div class="price">
+          ₹4,999
+        </div>
 
         <div class="details">
+
           <div class="detail-row">
             <span>Duration</span>
             <span>2 Days</span>
@@ -451,38 +853,71 @@
             <span>Limit</span>
             <span>0 / 1</span>
           </div>
+
         </div>
 
-        <button class="select-btn"
-          onclick="selectPlan('VIP 6', 4999)">
+        <button
+          class="select-btn"
+          onclick="selectPlan('VIP 6', 4999)"
+        >
           Select Plan
         </button>
+
       </div>
+
     </div>
+
 
   </div>
 
 
+  <!-- =========================
+       TRUST SECTION
+  ========================== -->
+
   <div class="trust">
 
     <div class="trust-item">
-      <strong>Protected Flow</strong>
+
+      <strong>
+        Protected Flow
+      </strong>
+
       Safe & Secure
+
     </div>
 
+
     <div class="trust-item">
-      <strong>Secure Payment</strong>
+
+      <strong>
+        Secure Payment
+      </strong>
+
       Protected Process
+
     </div>
 
+
     <div class="trust-item">
-      <strong>Fast Processing</strong>
+
+      <strong>
+        Fast Processing
+      </strong>
+
       Quick Service
+
     </div>
 
+
     <div class="trust-item">
-      <strong>Support</strong>
+
+      <strong>
+        Support
+      </strong>
+
       We're Here To Help
+
     </div>
 
   </div>
@@ -491,15 +926,28 @@
 
 
 <script>
-  function selectPlan(planName, amount) {
-    const params = new URLSearchParams();
 
-    params.set("plan", planName);
-    params.set("amount", amount);
+  function selectPlan(planName, amount) {
+
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      "plan",
+      planName
+    );
+
+    params.set(
+      "amount",
+      amount
+    );
 
     window.location.href =
-      "deposit.html?" + params.toString();
+      "deposit.html?" +
+      params.toString();
+
   }
+
 </script>
 
 </body>
