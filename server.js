@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const session = require('express-session');
+
 const MongoStore =
   require('connect-mongo').default || require('connect-mongo');
 
@@ -38,39 +39,6 @@ const ADMIN_USERNAME =
 
 const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD || '';
-
-// =====================================================
-// RS PAYMENT CONFIG
-// =====================================================
-
-const RSPAY_MERCHANT_ID =
-  process.env.RSPAY_MERCHANT_ID || '';
-
-const RSPAY_ACCESS_KEY =
-  process.env.RSPAY_ACCESS_KEY || '';
-
-const RSPAY_API_URL =
-  process.env.RSPAY_API_URL ||
-  'https://rspayment.shop/api.php';
-
-const RSPAY_WITHDRAW_URL =
-  process.env.RSPAY_WITHDRAW_URL ||
-  'https://rspayment.shop/withdraw_api.php';
-
-const APP_URL =
-  (process.env.APP_URL || '').replace(/\/+$/, '');
-
-const RSPAY_WEBHOOK_URL =
-  process.env.RSPAY_WEBHOOK_URL ||
-  (APP_URL
-    ? `${APP_URL}/api/payment/webhook`
-    : '');
-
-const RSPAY_RETURN_URL =
-  process.env.RSPAY_RETURN_URL ||
-  (APP_URL
-    ? `${APP_URL}/home.html`
-    : '');
 
 // =====================================================
 // MONGODB CHECK
@@ -230,6 +198,8 @@ walletTransactionSchema.index(
 
 // =====================================================
 // PAYMENT SCHEMA
+// Kept only for existing / historical orders.
+// No external payment gateway is connected.
 // =====================================================
 
 const paymentSchema =
@@ -426,9 +396,22 @@ function verifyPassword(
       salt
     );
 
+  const hashBuffer =
+    Buffer.from(hash, 'hex');
+
+  const storedBuffer =
+    Buffer.from(passwordHash, 'hex');
+
+  if (
+    hashBuffer.length !==
+    storedBuffer.length
+  ) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(
-    Buffer.from(hash, 'hex'),
-    Buffer.from(passwordHash, 'hex')
+    hashBuffer,
+    storedBuffer
   );
 }
 
@@ -1112,6 +1095,7 @@ app.get(
           Number(
             wallet.balance || 0
           ) / 100,
+
         balance_paise:
           Number(
             wallet.balance || 0
@@ -1154,12 +1138,19 @@ app.get(
         });
       }
 
+      const appUrl =
+        (
+          process.env.APP_URL || ''
+        ).replace(/\/+$/, '');
+
       return res.json({
         success: true,
+
         referral_code:
           user.referral_code,
+
         referral_link:
-          `${APP_URL || ''}/register.html?ref=${encodeURIComponent(user.referral_code)}`
+          `${appUrl}/register.html?ref=${encodeURIComponent(user.referral_code)}`
       });
 
     } catch (error) {
@@ -1231,434 +1222,20 @@ app.get(
 );
 
 // =====================================================
-// RS PAYMENT - CREATE PAYMENT
+// PAYMENT GATEWAY REMOVED
 // =====================================================
-
-app.post(
-  '/api/payment/create-order',
-  login,
-  async (req, res) => {
-    try {
-      const amount =
-        Number(req.body.amount);
-
-      const plan =
-        String(
-          req.body.plan || ''
-        ).trim();
-
-      if (
-        !Number.isFinite(amount) ||
-        amount < 200
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Minimum deposit amount is ₹200.'
-        });
-      }
-
-      if (!RSPAY_MERCHANT_ID) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'RS Payment merchant ID is not configured.'
-        });
-      }
-
-      if (
-        !RSPAY_WEBHOOK_URL ||
-        !RSPAY_RETURN_URL
-      ) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'RS Payment callback URLs are not configured.'
-        });
-      }
-
-      const merchantOrderId =
-        makeRef('TW');
-
-      const params =
-        new URLSearchParams();
-
-      params.set(
-        'amount',
-        amount.toFixed(2)
-      );
-
-      params.set(
-        'user_id',
-        RSPAY_MERCHANT_ID
-      );
-
-      params.set(
-        'order_id',
-        merchantOrderId
-      );
-
-      params.set(
-        'ext',
-        'TRUE WALK'
-      );
-
-      params.set(
-        'webhook_url',
-        RSPAY_WEBHOOK_URL
-      );
-
-      params.set(
-        'return_url',
-        RSPAY_RETURN_URL
-      );
-
-      const response =
-        await fetch(
-          `${RSPAY_API_URL}?${params.toString()}`,
-          {
-            method: 'GET',
-            headers: {
-              Accept:
-                'application/json'
-            }
-          }
-        );
-
-      const responseText =
-        await response.text();
-
-      let result;
-
-      try {
-        result =
-          JSON.parse(
-            responseText
-          );
-      } catch (parseError) {
-        console.error(
-          'RS Payment returned non-JSON:',
-          responseText
-        );
-
-        return res.status(502).json({
-          success: false,
-          message:
-            'RS Payment returned an invalid response.'
-        });
-      }
-
-      if (!response.ok) {
-        return res.status(502).json({
-          success: false,
-          message:
-            result.message ||
-            'RS Payment API request failed.'
-        });
-      }
-
-      if (
-        !result.status ||
-        !result.data ||
-        !result.data.payUrl
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            result.message ||
-            'RS Payment did not return a payment URL.'
-        });
-      }
-
-      const payment =
-        await Payment.create({
-          user_id:
-            req.session.userId,
-
-          plan:
-            plan || null,
-
-          amount:
-            Math.round(
-              amount * 100
-            ),
-
-          currency:
-            'INR',
-
-          merchant_order_id:
-            result.data.merchant_order_id ||
-            merchantOrderId,
-
-          platform_order_id:
-            result.data.platform_order_id ||
-            null,
-
-          pay_url:
-            result.data.payUrl,
-
-          status:
-            'created',
-
-          created_at:
-            new Date()
-        });
-
-      return res.json({
-        success: true,
-
-        paymentId:
-          payment._id,
-
-        orderId:
-          payment.merchant_order_id,
-
-        payUrl:
-          payment.pay_url,
-
-        amount,
-
-        currency:
-          'INR'
-      });
-
-    } catch (error) {
-      console.error(
-        'RS Payment create error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to create RS Payment order.'
-      });
-    }
-  }
-);
-
+//
+// RS Gateway / rspayment.shop has been completely removed.
+//
+// There is NO:
+// - RSPAY_MERCHANT_ID
+// - RSPAY_ACCESS_KEY
+// - RSPAY_API_URL
+// - RSPAY_WITHDRAW_URL
+// - RS Payment create-order
+// - RS Payment webhook
+//
 // =====================================================
-// RS PAYMENT - WEBHOOK
-// =====================================================
-
-app.post(
-  '/api/payment/webhook',
-  async (req, res) => {
-    try {
-      const {
-        status,
-        user_id,
-        merchant_order_id,
-        amount
-      } = req.body;
-
-      console.log(
-        'RS Payment webhook received:',
-        req.body
-      );
-
-      if (!merchant_order_id) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Missing merchant_order_id.'
-        });
-      }
-
-      if (
-        String(user_id || '') !==
-        String(RSPAY_MERCHANT_ID)
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            'Invalid merchant.'
-        });
-      }
-
-      if (
-        String(status || '')
-          .toLowerCase() !==
-        'success'
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Payment is not successful.'
-        });
-      }
-
-      const payment =
-        await Payment.findOne({
-          merchant_order_id
-        });
-
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Payment order not found.'
-        });
-      }
-
-      if (
-        payment.status === 'paid' ||
-        payment.status === 'captured'
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Payment already processed.'
-        });
-      }
-
-      const webhookAmount =
-        Number(amount);
-
-      const expectedAmount =
-        Number(payment.amount) / 100;
-
-      if (
-        !Number.isFinite(webhookAmount) ||
-        Math.abs(
-          webhookAmount -
-          expectedAmount
-        ) > 0.01
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Payment amount mismatch.'
-        });
-      }
-
-      const mongoSession =
-        await mongoose.startSession();
-
-      try {
-        await mongoSession.withTransaction(
-          async () => {
-            const freshPayment =
-              await Payment.findOne({
-                merchant_order_id
-              }).session(
-                mongoSession
-              );
-
-            if (!freshPayment) {
-              throw new Error(
-                'Payment not found.'
-              );
-            }
-
-            if (
-              freshPayment.status === 'paid' ||
-              freshPayment.status === 'captured'
-            ) {
-              return;
-            }
-
-            const wallet =
-              await ensureWallet(
-                freshPayment.user_id,
-                mongoSession
-              );
-
-            const oldBalance =
-              Number(
-                wallet.balance || 0
-              );
-
-            const creditAmount =
-              Number(
-                freshPayment.amount
-              );
-
-            const newBalance =
-              oldBalance +
-              creditAmount;
-
-            wallet.balance =
-              newBalance;
-
-            wallet.updated_at =
-              new Date();
-
-            await wallet.save({
-              session:
-                mongoSession
-            });
-
-            await WalletTransaction.create(
-              [
-                {
-                  user_id:
-                    freshPayment.user_id,
-
-                  type:
-                    'credit',
-
-                  amount:
-                    creditAmount,
-
-                  balance_after:
-                    newBalance,
-
-                  reference_type:
-                    'payment',
-
-                  reference_id:
-                    String(
-                      freshPayment._id
-                    ),
-
-                  created_at:
-                    new Date()
-                }
-              ],
-              {
-                session:
-                  mongoSession
-              }
-            );
-
-            freshPayment.status =
-              'paid';
-
-            freshPayment.paid_at =
-              new Date();
-
-            await freshPayment.save({
-              session:
-                mongoSession
-            });
-          }
-        );
-
-      } finally {
-        await mongoSession.endSession();
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          'Payment processed successfully.'
-      });
-
-    } catch (error) {
-      console.error(
-        'RS Payment webhook error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Webhook processing failed.'
-      });
-    }
-  }
-);
 
 // =====================================================
 // PAYMENT STATUS
@@ -1791,7 +1368,7 @@ app.get(
 );
 
 // =====================================================
-// WITHDRAWAL REQUEST — FIXED
+// WITHDRAWAL REQUEST
 // =====================================================
 
 app.post(
@@ -1806,10 +1383,6 @@ app.post(
     let mongoSession = null;
 
     try {
-      // -------------------------------------------------
-      // SUPPORT BOTH FRONTEND FIELD NAMES
-      // -------------------------------------------------
-
       const amount =
         Number(
           req.body.amount
@@ -2000,7 +1573,7 @@ app.post(
       }
 
       // -------------------------------------------------
-      // START MONGODB TRANSACTION
+      // START TRANSACTION
       // -------------------------------------------------
 
       mongoSession =
@@ -2011,7 +1584,6 @@ app.post(
       await mongoSession.withTransaction(
         async () => {
 
-          // Get wallet
           const wallet =
             await ensureWallet(
               req.session.userId,
@@ -2028,10 +1600,13 @@ app.post(
             {
               balance_paise:
                 balance,
+
               balance_rupees:
                 balance / 100,
+
               requested_paise:
                 amountPaise,
+
               requested_rupees:
                 amount
             }
@@ -2126,7 +1701,7 @@ app.post(
             created[0];
 
           // -------------------------------------------------
-          // WALLET DEBIT TRANSACTION
+          // WALLET DEBIT
           // -------------------------------------------------
 
           await WalletTransaction.create(
@@ -2169,7 +1744,9 @@ app.post(
         {
           id:
             withdrawal._id,
+
           amount,
+
           method
         }
       );
@@ -2184,14 +1761,12 @@ app.post(
           id:
             withdrawal._id,
 
-          amount:
-            amount,
+          amount,
 
           status:
             withdrawal.status,
 
-          method:
-            method
+          method
         }
       });
 
@@ -2214,7 +1789,6 @@ app.post(
         });
       }
 
-      // MongoDB transaction error
       if (
         error &&
         (
@@ -2710,6 +2284,18 @@ app.post(
         });
       }
 
+      if (
+        !mongoose.isValidObjectId(
+          userId
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user ID.'
+        });
+      }
+
       const amountPaise =
         Math.round(
           amount * 100
@@ -2718,7 +2304,7 @@ app.post(
       const mongoSession =
         await mongoose.startSession();
 
-      let newBalance;
+      let newBalance = 0;
 
       try {
         await mongoSession.withTransaction(
@@ -3082,12 +2668,14 @@ app.post(
   '/api/admin/withdrawals/:id/reject',
   admin,
   async (req, res) => {
+
     const mongoSession =
       await mongoose.startSession();
 
     try {
       await mongoSession.withTransaction(
         async () => {
+
           const withdrawal =
             await Withdrawal.findById(
               req.params.id
@@ -3566,10 +3154,7 @@ async function startServer() {
     );
 
     console.log(
-      'RS Payment:',
-      RSPAY_MERCHANT_ID
-        ? 'configured'
-        : 'NOT configured'
+      'RS Payment Gateway: REMOVED'
     );
 
     app.listen(
