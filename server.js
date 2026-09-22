@@ -9,89 +9,30 @@ const MongoStore =
   require('connect-mongo').default || require('connect-mongo');
 
 const app = express();
-
 const PORT = process.env.PORT || 3000;
-
-// =====================================================
-// BASIC SETTINGS
-// =====================================================
 
 app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// =====================================================
-// ENVIRONMENT
-// =====================================================
+/* ======================================================
+   DATABASE
+   ====================================================== */
 
 const MONGO_URI =
-  process.env.MONGODB_URI ||
-  process.env.MONGO_URI;
-
-const SESSION_SECRET =
-  process.env.SESSION_SECRET ||
-  'CHANGE_THIS_SESSION_SECRET';
-
-const ADMIN_USERNAME =
-  process.env.ADMIN_USERNAME || '';
-
-const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD || '';
-
-
-// =====================================================
-// ASTROPAY CONFIG
-// =====================================================
-
-const ASTROPAY_BASE_URL =
-  (
-    process.env.ASTROPAY_BASE_URL ||
-    'https://api.gpay.one'
-  ).replace(/\/+$/, '');
-
-const ASTROPAY_MERCHANT_KEY =
-  process.env.ASTROPAY_MERCHANT_KEY || '';
-
-const ASTROPAY_SECRET_KEY =
-  process.env.ASTROPAY_SECRET_KEY || '';
-
-const APP_URL =
-  (process.env.APP_URL || '').replace(/\/+$/, '');
-
-const ASTROPAY_DEPOSIT_CALLBACK_URL =
-  process.env.ASTROPAY_DEPOSIT_CALLBACK_URL ||
-  (
-    APP_URL
-      ? `${APP_URL}/api/payment/webhook`
-      : ''
-  );
-
-const ASTROPAY_WITHDRAW_CALLBACK_URL =
-  process.env.ASTROPAY_WITHDRAW_CALLBACK_URL ||
-  (
-    APP_URL
-      ? `${APP_URL}/api/withdrawal/webhook`
-      : ''
-  );
-
-
-// =====================================================
-// MONGODB CHECK
-// =====================================================
+  process.env.MONGODB_URI || process.env.MONGO_URI;
 
 if (!MONGO_URI) {
   console.error(
-    'ERROR: MONGODB_URI / MONGO_URI is missing.'
+    'ERROR: MONGODB_URI (or MONGO_URI) is not configured.'
   );
-
   process.exit(1);
 }
 
-
-// =====================================================
-// USER SCHEMA
-// =====================================================
+/* ======================================================
+   SCHEMAS
+   ====================================================== */
 
 const userSchema = new mongoose.Schema(
   {
@@ -105,15 +46,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
-      trim: true
-    },
-
-    email: {
-      type: String,
-      default: null,
-      trim: true,
-      lowercase: true
+      index: true
     },
 
     salt: {
@@ -128,8 +61,8 @@ const userSchema = new mongoose.Schema(
 
     referral_code: {
       type: String,
-      required: true,
       unique: true,
+      sparse: true,
       index: true
     },
 
@@ -137,31 +70,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
       index: true
-    },
-
-    banned: {
-      type: Boolean,
-      default: false,
-      index: true
     }
   },
   {
-    timestamps: false
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
+    }
   }
 );
-
-
-// =====================================================
-// WALLET
-// ALL AMOUNTS ARE STORED IN PAISE
-// =====================================================
 
 const walletSchema = new mongoose.Schema(
   {
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
       unique: true,
       index: true
     },
@@ -175,63 +98,49 @@ const walletSchema = new mongoose.Schema(
       type: Date,
       default: Date.now
     }
+  },
+  {
+    versionKey: false
   }
 );
 
+const walletTransactionSchema = new mongoose.Schema(
+  {
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
 
-// =====================================================
-// WALLET TRANSACTION
-// =====================================================
+    type: {
+      type: String,
+      required: true
+    },
 
-const walletTransactionSchema =
-  new mongoose.Schema(
-    {
-      user_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true
-      },
+    amount: {
+      type: Number,
+      required: true
+    },
 
-      type: {
-        type: String,
-        required: true,
-        enum: [
-          'credit',
-          'debit',
-          'refund'
-        ]
-      },
+    balance_after: {
+      type: Number,
+      required: true
+    },
 
-      amount: {
-        type: Number,
-        required: true
-      },
+    reference_type: String,
 
-      balance_after: {
-        type: Number,
-        required: true
-      },
+    reference_id: String,
 
-      reference_type: {
-        type: String,
-        default: null
-      },
-
-      reference_id: {
-        type: String,
-        default: null
-      },
-
-      created_at: {
-        type: Date,
-        default: Date.now
-      }
+    created_at: {
+      type: Date,
+      default: Date.now
     }
-  );
+  },
+  {
+    versionKey: false
+  }
+);
 
-
-// Prevent duplicate transaction
 walletTransactionSchema.index(
   {
     reference_type: 1,
@@ -244,893 +153,349 @@ walletTransactionSchema.index(
   }
 );
 
+const withdrawalSchema = new mongoose.Schema(
+  {
+    user_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
 
-// =====================================================
-// PAYMENT / DEPOSIT
-// =====================================================
+    amount: {
+      type: Number,
+      required: true
+    },
 
-const paymentSchema =
-  new mongoose.Schema(
-    {
-      user_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true
-      },
+    currency: {
+      type: String,
+      default: 'INR'
+    },
 
-      plan: {
-        type: String,
-        default: null
-      },
+    method: {
+      type: String,
+      required: true
+    },
 
-      amount: {
-        type: Number,
-        required: true
-      },
+    upi_id: String,
 
-      currency: {
-        type: String,
-        default: 'INR'
-      },
+    account_name: String,
 
-      merchant_order_id: {
-        type: String,
-        unique: true,
-        sparse: true,
-        index: true
-      },
+    account_last4: String,
 
-      platform_order_id: {
-        type: String,
-        default: null
-      },
+    ifsc: String,
 
-      pay_url: {
-        type: String,
-        default: null
-      },
+    status: {
+      type: String,
+      default: 'pending',
+      index: true
+    },
 
-      commission: {
-        type: Number,
-        default: 0
-      },
+    created_at: {
+      type: Date,
+      default: Date.now
+    },
 
-      utr: {
-        type: String,
-        default: null
-      },
+    processed_at: Date
+  },
+  {
+    versionKey: false
+  }
+);
 
-      status: {
-        type: String,
-        default: 'created',
-        index: true
-      },
+const User = mongoose.model('User', userSchema);
 
-      created_at: {
-        type: Date,
-        default: Date.now
-      },
-
-      paid_at: {
-        type: Date,
-        default: null
-      }
-    }
-  );
-
-
-// =====================================================
-// WITHDRAWAL
-// =====================================================
-
-const withdrawalSchema =
-  new mongoose.Schema(
-    {
-      user_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true
-      },
-
-      amount: {
-        type: Number,
-        required: true
-      },
-
-      currency: {
-        type: String,
-        default: 'INR'
-      },
-
-      method: {
-        type: String,
-        default: 'UPI'
-      },
-
-      upi_id: {
-        type: String,
-        default: null
-      },
-
-      account_name: {
-        type: String,
-        default: null
-      },
-
-      account_last4: {
-        type: String,
-        default: null
-      },
-
-      ifsc: {
-        type: String,
-        default: null
-      },
-
-      account_phone: {
-        type: String,
-        default: null
-      },
-
-      astropay_order_id: {
-        type: String,
-        unique: true,
-        sparse: true,
-        index: true
-      },
-
-      astropay_utr: {
-        type: String,
-        default: null
-      },
-
-      commission: {
-        type: Number,
-        default: 0
-      },
-
-      remark: {
-        type: String,
-        default: null
-      },
-
-      status: {
-        type: String,
-        default: 'pending',
-        index: true
-      },
-
-      created_at: {
-        type: Date,
-        default: Date.now
-      },
-
-      processed_at: {
-        type: Date,
-        default: null
-      }
-    }
-  );
-
-
-// =====================================================
-// MODELS
-// =====================================================
-
-const User =
-  mongoose.models.User ||
-  mongoose.model(
-    'User',
-    userSchema
-  );
-
-const Wallet =
-  mongoose.models.Wallet ||
-  mongoose.model(
-    'Wallet',
-    walletSchema
-  );
+const Wallet = mongoose.model(
+  'Wallet',
+  walletSchema
+);
 
 const WalletTransaction =
-  mongoose.models.WalletTransaction ||
   mongoose.model(
     'WalletTransaction',
     walletTransactionSchema
   );
 
-const Payment =
-  mongoose.models.Payment ||
-  mongoose.model(
-    'Payment',
-    paymentSchema
-  );
-
 const Withdrawal =
-  mongoose.models.Withdrawal ||
   mongoose.model(
     'Withdrawal',
     withdrawalSchema
   );
 
+/* ======================================================
+   SESSION
+   ====================================================== */
 
-// =====================================================
-// PASSWORD HELPERS
-// =====================================================
+app.use(
+  session({
+    name: 'truewalk.sid',
 
-function createSalt() {
-  return crypto
-    .randomBytes(16)
-    .toString('hex');
-}
+    secret:
+      process.env.SESSION_SECRET ||
+      'CHANGE_THIS_TO_A_LONG_RANDOM_SECRET',
 
+    resave: false,
 
-function hashPassword(
-  password,
-  salt
-) {
-  return crypto
+    saveUninitialized: false,
+
+    store: MongoStore.create({
+      mongoUrl: MONGO_URI,
+      collectionName: 'sessions',
+      ttl: 14 * 24 * 60 * 60
+    }),
+
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure:
+        process.env.NODE_ENV === 'production',
+      maxAge:
+        14 * 24 * 60 * 60 * 1000
+    }
+  })
+);
+
+/* ======================================================
+   HELPERS
+   ====================================================== */
+
+const hash = (password, salt) =>
+  crypto
     .scryptSync(
       String(password),
       salt,
       64
     )
     .toString('hex');
-}
 
+const makeRef = () =>
+  'TW' +
+  crypto
+    .randomBytes(8)
+    .toString('hex')
+    .toUpperCase();
 
-function verifyPassword(
-  password,
-  salt,
-  passwordHash
-) {
-  const hash =
-    hashPassword(
-      password,
-      salt
-    );
+function moneyToPaise(amount) {
+  const n = Number(amount);
 
-  const a =
-    Buffer.from(
-      hash,
-      'hex'
-    );
-
-  const b =
-    Buffer.from(
-      passwordHash,
-      'hex'
-    );
-
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(
-    a,
-    b
-  );
-}
-
-
-// =====================================================
-// UNIQUE ORDER ID
-// =====================================================
-
-function makeRef(
-  prefix = 'TW'
-) {
-  return (
-    prefix +
-    '_' +
-    Date.now() +
-    '_' +
-    crypto
-      .randomBytes(6)
-      .toString('hex')
-  );
-}
-
-
-// =====================================================
-// WALLET
-// =====================================================
-
-async function ensureWallet(
-  userId,
-  mongoSession = null
-) {
-  let wallet =
-    await Wallet.findOne({
-      user_id: userId
-    }).session(
-      mongoSession
-    );
-
-  if (!wallet) {
-    const created =
-      await Wallet.create(
-        [
-          {
-            user_id: userId,
-            balance: 0,
-            updated_at: new Date()
-          }
-        ],
-        mongoSession
-          ? {
-              session:
-                mongoSession
-            }
-          : undefined
-      );
-
-    wallet = created[0];
-  }
-
-  return wallet;
-}
-
-
-// =====================================================
-// SAFE USER
-// =====================================================
-
-function safeUser(user) {
-  if (!user) {
+  if (!Number.isFinite(n)) {
     return null;
   }
 
-  return {
-    id: user._id,
-    name: user.name,
-    phone: user.phone,
-    email: user.email || null,
-    referral_code:
-      user.referral_code,
-    referred_by:
-      user.referred_by
-  };
+  return Math.round(n * 100);
 }
 
+async function ensureWallet(userId) {
+  return Wallet.findOneAndUpdate(
+    {
+      user_id: userId
+    },
+    {
+      $setOnInsert: {
+        user_id: userId,
+        balance: 0
+      },
 
-// =====================================================
-// USER LOGIN MIDDLEWARE
-// =====================================================
-
-async function login(
-  req,
-  res,
-  next
-) {
-  try {
-    if (!req.session.userId) {
-      return res.status(401).json({
-        success: false,
-        message:
-          'Login required.'
-      });
-    }
-
-    const user =
-      await User.findById(
-        req.session.userId
-      );
-
-    if (!user) {
-      req.session.destroy(
-        () => {}
-      );
-
-      return res.status(401).json({
-        success: false,
-        message:
-          'User account not found.'
-      });
-    }
-
-    if (user.banned === true) {
-      req.session.destroy(
-        () => {}
-      );
-
-      return res.status(403).json({
-        success: false,
-        message:
-          'Your account has been banned.'
-      });
-    }
-
-    req.currentUser = user;
-
-    next();
-
-  } catch (error) {
-    console.error(
-      'Login middleware error:',
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        'Authentication error.'
-    });
-  }
-}
-
-
-// =====================================================
-// ADMIN MIDDLEWARE
-// =====================================================
-
-function admin(
-  req,
-  res,
-  next
-) {
-  if (!req.session.isAdmin) {
-    return res.status(401).json({
-      success: false,
-      message:
-        'Admin login required.'
-    });
-  }
-
-  next();
-}
-
-
-// =====================================================
-// SESSION
-// =====================================================
-
-const isProduction =
-  process.env.NODE_ENV ===
-  'production';
-
-app.use(
-  session({
-    name:
-      'truewalk.sid',
-
-    secret:
-      SESSION_SECRET,
-
-    resave:
-      false,
-
-    saveUninitialized:
-      false,
-
-    proxy:
-      true,
-
-    store:
-      MongoStore.create({
-        mongoUrl:
-          MONGO_URI,
-
-        collectionName:
-          'sessions',
-
-        ttl:
-          14 * 24 * 60 * 60
-      }),
-
-    cookie: {
-      httpOnly:
-        true,
-
-      secure:
-        isProduction,
-
-      sameSite:
-        isProduction
-          ? 'none'
-          : 'lax',
-
-      maxAge:
-        14 *
-        24 *
-        60 *
-        60 *
-        1000
-    }
-  })
-);
-
-
-// =====================================================
-// HOME PROTECTION
-// =====================================================
-
-app.get(
-  '/home.html',
-  (req, res, next) => {
-    if (
-      !req.session ||
-      !req.session.userId
-    ) {
-      return res.redirect(
-        '/login.html'
-      );
-    }
-
-    next();
-  }
-);
-
-
-// =====================================================
-// ASTROPAY API HELPER
-// =====================================================
-
-async function astroPayRequest(
-  endpoint,
-  body
-) {
-  const url =
-    `${ASTROPAY_BASE_URL}${endpoint}`;
-
-  const response =
-    await fetch(
-      url,
-      {
-        method:
-          'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json',
-
-          Accept:
-            'application/json'
-        },
-
-        body:
-          JSON.stringify({
-            merchantKey:
-              ASTROPAY_MERCHANT_KEY,
-
-            secretKey:
-              ASTROPAY_SECRET_KEY,
-
-            ...body
-          })
+      $set: {
+        updated_at: new Date()
       }
-    );
-
-  const text =
-    await response.text();
-
-  let result;
-
-  try {
-    result =
-      JSON.parse(text);
-  } catch {
-    throw new Error(
-      'AstroPay returned invalid JSON.'
-    );
-  }
-
-  return {
-    httpStatus:
-      response.status,
-
-    result
-  };
-}
-
-
-// =====================================================
-// ASTROPAY WEBHOOK SIGNATURE
-// =====================================================
-
-function createAstroPaySignature(
-  payload
-) {
-  const fields = {
-    orderId:
-      payload.orderId,
-
-    amount:
-      payload.amount,
-
-    commission:
-      payload.commission,
-
-    status:
-      payload.status,
-
-    utr:
-      payload.utr
-  };
-
-  const sortedKeys =
-    Object.keys(fields)
-      .sort();
-
-  const parts = [];
-
-  for (
-    const key of sortedKeys
-  ) {
-    const value =
-      fields[key];
-
-    if (
-      value === null ||
-      value === undefined ||
-      value === ''
-    ) {
-      continue;
+    },
+    {
+      upsert: true,
+      new: true
     }
-
-    parts.push(
-      `${key}=${value}`
-    );
-  }
-
-  const signString =
-    parts.join('&') +
-    '&secret=' +
-    ASTROPAY_SECRET_KEY;
-
-  return crypto
-    .createHash('md5')
-    .update(signString)
-    .digest('hex')
-    .toUpperCase();
-}
-
-
-function verifyAstroPayWebhook(
-  payload
-) {
-  if (
-    !payload ||
-    !payload.sign
-  ) {
-    return false;
-  }
-
-  const expected =
-    createAstroPaySignature(
-      payload
-    );
-
-  const received =
-    String(
-      payload.sign
-    )
-      .trim()
-      .toUpperCase();
-
-  if (
-    expected.length !==
-    received.length
-  ) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(
-    Buffer.from(expected),
-    Buffer.from(received)
   );
 }
 
+function login(req, res, next) {
+  if (req.session.userId) {
+    return next();
+  }
 
-// =====================================================
-// ADMIN LOGIN
-// =====================================================
+  return res.status(401).json({
+    message: 'Please login first.'
+  });
+}
+
+function admin(req, res, next) {
+  if (req.session.isAdmin) {
+    return next();
+  }
+
+  return res.status(401).json({
+    message: 'Admin login required.'
+  });
+}
+
+function safeUser(u) {
+  return {
+    id: u._id,
+    name: u.name,
+    phone: u.phone
+  };
+}
+
+/* ======================================================
+   HEALTH
+   ====================================================== */
+
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    service: 'TRUE WALK'
+  });
+});
+
+/* ======================================================
+   HOME
+   ====================================================== */
+
+app.get('/home.html', (req, res) => {
+  if (!req.session.userId) {
+    return res.redirect('/login.html');
+  }
+
+  return res.sendFile(
+    path.join(__dirname, 'home.html')
+  );
+});
+
+/* ======================================================
+   ADMIN LOGIN
+   ====================================================== */
 
 app.post(
   '/api/admin/login',
-  async (req, res) => {
-    try {
-      const username =
-        String(
-          req.body.username || ''
-        ).trim();
+  (req, res) => {
+    const {
+      username,
+      password
+    } = req.body;
 
-      const password =
-        String(
-          req.body.password || ''
-        );
-
-      if (
-        !ADMIN_USERNAME ||
-        !ADMIN_PASSWORD
-      ) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'Admin credentials are not configured.'
-        });
-      }
-
-      if (
-        username !==
-          ADMIN_USERNAME ||
-        password !==
-          ADMIN_PASSWORD
-      ) {
-        return res.status(401).json({
-          success: false,
-          message:
-            'Invalid admin credentials.'
-        });
-      }
-
-      req.session.regenerate(
-        error => {
-          if (error) {
-            return res.status(500).json({
-              success: false,
-              message:
-                'Unable to create admin session.'
-            });
-          }
-
-          req.session.userId =
-            null;
-
-          req.session.isAdmin =
-            true;
-
-          req.session.save(
-            saveError => {
-              if (saveError) {
-                return res.status(500).json({
-                  success: false,
-                  message:
-                    'Unable to save admin session.'
-                });
-              }
-
-              return res.json({
-                success: true,
-                isAdmin: true,
-                message:
-                  'Admin login successful.'
-              });
-            }
-          );
-        }
-      );
-
-    } catch (error) {
-      console.error(
-        'Admin login error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
+    if (
+      !process.env.ADMIN_USERNAME ||
+      !process.env.ADMIN_PASSWORD
+    ) {
+      return res.status(503).json({
         message:
-          'Admin login failed.'
+          'Admin credentials are not configured in Render Environment Variables.'
       });
     }
+
+    if (
+      String(username || '') !==
+        String(
+          process.env.ADMIN_USERNAME
+        ) ||
+      String(password || '') !==
+        String(
+          process.env.ADMIN_PASSWORD
+        )
+    ) {
+      return res.status(401).json({
+        message:
+          'Invalid admin username or password.'
+      });
+    }
+
+    req.session.regenerate(
+      (err) => {
+        if (err) {
+          return res.status(500).json({
+            message:
+              'Admin login failed.'
+          });
+        }
+
+        req.session.isAdmin = true;
+
+        req.session.save(
+          (saveErr) => {
+            if (saveErr) {
+              return res.status(500).json({
+                message:
+                  'Admin session could not be saved.'
+              });
+            }
+
+            return res.json({
+              success: true,
+              message:
+                'Admin login successful.'
+            });
+          }
+        );
+      }
+    );
   }
 );
 
+app.post(
+  '/api/admin/logout',
+  admin,
+  (req, res) => {
+    req.session.destroy(() => {
+      res.clearCookie(
+        'truewalk.sid'
+      );
 
-// =====================================================
-// ADMIN ME
-// =====================================================
+      res.json({
+        success: true
+      });
+    });
+  }
+);
 
 app.get(
   '/api/admin/me',
   admin,
   (req, res) => {
-    return res.json({
+    res.json({
       success: true,
-      isAdmin: true
+      admin: true
     });
   }
 );
 
-
-// =====================================================
-// ADMIN LOGOUT
-// =====================================================
-
-app.post(
-  '/api/admin/logout',
-  (req, res) => {
-    if (!req.session) {
-      return res.json({
-        success: true
-      });
-    }
-
-    req.session.isAdmin =
-      false;
-
-    req.session.userId =
-      null;
-
-    req.session.save(
-      error => {
-        if (error) {
-          return res.status(500).json({
-            success: false,
-            message:
-              'Admin logout failed.'
-          });
-        }
-
-        return res.json({
-          success: true,
-          message:
-            'Admin logged out.'
-        });
-      }
-    );
-  }
-);
-
-
-// =====================================================
-// REGISTER
-// =====================================================
+/* ======================================================
+   REGISTER
+   ====================================================== */
 
 app.post(
   '/api/register',
   async (req, res) => {
     try {
-      const name =
-        String(
-          req.body.name || ''
-        ).trim();
+      const {
+        name,
+        phone,
+        password,
+        referralCode
+      } = req.body;
 
-      const phone =
-        String(
-          req.body.phone || ''
-        ).trim();
-
-      const email =
-        String(
-          req.body.email || ''
-        ).trim()
-        .toLowerCase();
-
-      const password =
-        String(
-          req.body.password || ''
-        );
-
-      const referral =
-        String(
-          req.body.referral_code ||
-          req.body.referral ||
-          ''
-        ).trim();
-
-      if (!name) {
+      if (
+        !name ||
+        !phone ||
+        !password
+      ) {
         return res.status(400).json({
-          success: false,
           message:
-            'Name is required.'
+            'Name, mobile number and password are required.'
         });
       }
 
-      if (!phone) {
+      const ph =
+        String(phone).trim();
+
+      if (!/^\d{10}$/.test(ph)) {
         return res.status(400).json({
-          success: false,
           message:
-            'Phone is required.'
+            'Please enter a valid 10-digit mobile number.'
         });
       }
 
       if (
-        password.length < 6
+        String(password).length < 6
       ) {
         return res.status(400).json({
-          success: false,
           message:
             'Password must be at least 6 characters.'
         });
@@ -1138,39 +503,47 @@ app.post(
 
       const existing =
         await User.findOne({
-          phone
-        });
+          phone: ph
+        }).lean();
 
       if (existing) {
         return res.status(409).json({
-          success: false,
           message:
-            'Phone number is already registered.'
+            'This mobile number is already registered.'
         });
       }
 
-      const salt =
-        createSalt();
+      let referredBy = null;
 
-      const passwordHash =
-        hashPassword(
-          password,
-          salt
-        );
-
-      let referralCode;
-
-      while (true) {
-        referralCode =
-          crypto
-            .randomBytes(4)
-            .toString('hex')
+      if (referralCode) {
+        const c =
+          String(referralCode)
+            .trim()
             .toUpperCase();
 
-        const exists =
+        const refUser =
           await User.findOne({
-            referral_code:
-              referralCode
+            referral_code: c
+          }).lean();
+
+        if (!refUser) {
+          return res.status(400).json({
+            message:
+              'Invalid referral code.'
+          });
+        }
+
+        referredBy = c;
+      }
+
+      let rc;
+
+      for (;;) {
+        rc = makeRef();
+
+        const exists =
+          await User.exists({
+            referral_code: rc
           });
 
         if (!exists) {
@@ -1178,72 +551,67 @@ app.post(
         }
       }
 
-      let referredBy =
-        null;
+      const salt =
+        crypto
+          .randomBytes(16)
+          .toString('hex');
 
-      if (referral) {
-        const referrer =
-          await User.findOne({
-            referral_code:
-              referral.toUpperCase()
-          });
-
-        if (referrer) {
-          referredBy =
-            referrer.referral_code;
-        }
-      }
+      const passwordHash =
+        hash(
+          password,
+          salt
+        );
 
       const user =
         await User.create({
-          name,
-          phone,
-          email:
-            email || null,
+          name:
+            String(name).trim(),
+
+          phone: ph,
+
           salt,
+
           password_hash:
             passwordHash,
+
           referral_code:
-            referralCode,
+            rc,
+
           referred_by:
-            referredBy,
-          banned:
-            false
+            referredBy
         });
 
-      await Wallet.create({
-        user_id:
-          user._id,
-
-        balance:
-          0,
-
-        updated_at:
-          new Date()
-      });
-
-      req.session.userId =
-        user._id.toString();
-
-      req.session.isAdmin =
-        false;
-
-      return res.json({
-        success: true,
-        message:
-          'Registration successful.',
-        user:
-          safeUser(user)
-      });
-
-    } catch (error) {
-      console.error(
-        'Register error:',
-        error
+      await ensureWallet(
+        user._id
       );
 
+      return res.status(201).json({
+        message:
+          'Registration successful.',
+
+        userId:
+          user._id,
+
+        referralCode:
+          rc
+      });
+    } catch (e) {
+      console.error(
+        'REGISTER ERROR:',
+        e
+      );
+
+      if (
+        e &&
+        e.code === 11000
+      ) {
+        return res.status(409).json({
+          message:
+            'This mobile number or referral code is already registered.'
+        });
+      }
+
       return res.status(500).json({
-        success: false,
         message:
           'Registration failed.'
       });
@@ -1251,91 +619,87 @@ app.post(
   }
 );
 
-
-// =====================================================
-// LOGIN
-// =====================================================
+/* ======================================================
+   LOGIN
+   ====================================================== */
 
 app.post(
   '/api/login',
   async (req, res) => {
     try {
-      const phone =
-        String(
-          req.body.phone || ''
-        ).trim();
+      const {
+        phone,
+        password
+      } = req.body;
 
-      const password =
-        String(
-          req.body.password || ''
-        );
-
-      if (!phone || !password) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Phone and password are required.'
-        });
-      }
-
-      const user =
+      const u =
         await User.findOne({
-          phone
+          phone:
+            String(
+              phone || ''
+            ).trim()
         });
 
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message:
-            'Invalid phone or password.'
-        });
-      }
-
-      if (user.banned) {
-        return res.status(403).json({
-          success: false,
-          message:
-            'Your account has been banned.'
-        });
-      }
-
-      const valid =
-        verifyPassword(
+      if (
+        !u ||
+        hash(
           password,
-          user.salt,
-          user.password_hash
-        );
-
-      if (!valid) {
+          u.salt
+        ) !==
+          u.password_hash
+      ) {
         return res.status(401).json({
-          success: false,
           message:
-            'Invalid phone or password.'
+            'Invalid mobile number or password.'
         });
       }
 
-      req.session.userId =
-        user._id.toString();
+      await ensureWallet(
+        u._id
+      );
 
-      req.session.isAdmin =
-        false;
+      req.session.regenerate(
+        (err) => {
+          if (err) {
+            return res.status(500).json({
+              message:
+                'Login failed.'
+            });
+          }
 
-      return res.json({
-        success: true,
-        message:
-          'Login successful.',
-        user:
-          safeUser(user)
-      });
+          req.session.userId =
+            String(u._id);
 
-    } catch (error) {
+          req.session.isAdmin =
+            false;
+
+          req.session.save(
+            (saveErr) => {
+              if (saveErr) {
+                return res.status(500).json({
+                  message:
+                    'Login session could not be saved.'
+                });
+              }
+
+              return res.json({
+                message:
+                  'Login successful.',
+
+                user:
+                  safeUser(u)
+              });
+            }
+          );
+        }
+      );
+    } catch (e) {
       console.error(
-        'Login error:',
-        error
+        'LOGIN ERROR:',
+        e
       );
 
       return res.status(500).json({
-        success: false,
         message:
           'Login failed.'
       });
@@ -1343,89 +707,117 @@ app.post(
   }
 );
 
-
-// =====================================================
-// ME
-// =====================================================
+/* ======================================================
+   CURRENT USER
+   ====================================================== */
 
 app.get(
   '/api/me',
   login,
   async (req, res) => {
     try {
-      const wallet =
+      const u =
+        await User.findById(
+          req.session.userId
+        ).select(
+          '_id name phone referral_code'
+        );
+
+      if (!u) {
+        return res.status(401).json({
+          message:
+            'Session is invalid.'
+        });
+      }
+
+      const w =
         await ensureWallet(
-          req.currentUser._id
+          u._id
         );
 
       return res.json({
-        success: true,
+        user: {
+          id: u._id,
+          name: u.name,
+          phone: u.phone,
+          referral_code:
+            u.referral_code
+        },
 
-        user:
-          safeUser(
-            req.currentUser
-          ),
-
-        wallet: {
-          balance:
-            Number(
-              wallet.balance || 0
-            ) / 100
-        }
+        balance:
+          Number(w.balance) / 100
       });
-
-    } catch (error) {
+    } catch (e) {
       console.error(
-        'Me error:',
-        error
+        'ME ERROR:',
+        e
       );
 
       return res.status(500).json({
-        success: false,
         message:
-          'Unable to load account.'
+          'Unable to load user.'
       });
     }
   }
 );
 
-
-// =====================================================
-// WALLET
-// =====================================================
+/* ======================================================
+   WALLET
+   ====================================================== */
 
 app.get(
   '/api/wallet',
   login,
   async (req, res) => {
     try {
-      const wallet =
+      const w =
         await ensureWallet(
-          req.currentUser._id
+          req.session.userId
         );
+
+      const t =
+        await WalletTransaction.find({
+          user_id:
+            req.session.userId
+        })
+          .sort({
+            created_at: -1
+          })
+          .limit(50)
+          .lean();
 
       return res.json({
         success: true,
 
         balance:
-          Number(
-            wallet.balance || 0
-          ) / 100,
+          Number(w.balance) / 100,
 
-        balance_paise:
-          Number(
-            wallet.balance || 0
-          )
+        updatedAt:
+          w.updated_at,
+
+        transactions:
+          t.map((x) => ({
+            ...x,
+
+            id: x._id,
+
+            amount:
+              Number(x.amount) /
+              100,
+
+            balanceAfter:
+              Number(
+                x.balance_after
+              ) / 100
+          }))
       });
-
-    } catch (error) {
+    } catch (e) {
       console.error(
-        'Wallet error:',
-        error
+        'WALLET ERROR:',
+        e
       );
 
       return res.status(500).json({
-        success: false,
         message:
           'Unable to load wallet.'
       });
@@ -1433,74 +825,110 @@ app.get(
   }
 );
 
-
-// =====================================================
-// REFERRAL
-// =====================================================
+/* ======================================================
+   REFERRAL
+   ====================================================== */
 
 app.get(
   '/api/referral',
   login,
   async (req, res) => {
     try {
-      const user =
-        req.currentUser;
+      const u =
+        await User.findById(
+          req.session.userId
+        ).select(
+          'referral_code'
+        );
+
+      if (!u) {
+        return res.status(401).json({
+          message:
+            'User not found.'
+        });
+      }
+
+      const n =
+        await User.countDocuments({
+          referred_by:
+            u.referral_code
+        });
 
       return res.json({
-        success: true,
+        referralCode:
+          u.referral_code,
 
-        referral_code:
-          user.referral_code,
+        totalReferrals:
+          n,
 
-        referral_link:
-          `${APP_URL || ''}/register.html?ref=${encodeURIComponent(user.referral_code)}`
+        activeReferrals:
+          n
       });
+    } catch (e) {
+      console.error(
+        'REFERRAL ERROR:',
+        e
+      );
 
-    } catch (error) {
       return res.status(500).json({
-        success: false,
         message:
-          'Unable to load referral.'
+          'Unable to load referral data.'
       });
     }
   }
 );
-
-
-// =====================================================
-// REFERRALS
-// =====================================================
 
 app.get(
   '/api/referrals',
   login,
   async (req, res) => {
     try {
-      const referrals =
+      const u =
+        await User.findById(
+          req.session.userId
+        ).select(
+          'referral_code'
+        );
+
+      if (!u) {
+        return res.status(401).json({
+          message:
+            'User not found.'
+        });
+      }
+
+      const rows =
         await User.find({
           referred_by:
-            req.currentUser.referral_code
+            u.referral_code
         })
-        .select(
-          'name phone referral_code'
-        )
-        .sort({
-          _id: -1
-        });
+          .select(
+            '_id name phone referral_code created_at'
+          )
+          .sort({
+            created_at: -1
+          })
+          .lean();
 
       return res.json({
-        success: true,
-        referrals
+        referrals:
+          rows.map((x) => ({
+            id: x._id,
+            name: x.name,
+            phone: x.phone,
+            referral_code:
+              x.referral_code,
+            created_at:
+              x.created_at
+          }))
       });
-
-    } catch (error) {
+    } catch (e) {
       console.error(
-        'Referrals error:',
-        error
+        'REFERRALS ERROR:',
+        e
       );
 
       return res.status(500).json({
-        success: false,
         message:
           'Unable to load referrals.'
       });
@@ -1508,784 +936,67 @@ app.get(
   }
 );
 
-
-// =====================================================
-// ASTROPAY - CREATE DEPOSIT
-// =====================================================
-
-app.post(
-  '/api/payment/create-order',
-  login,
-  async (req, res) => {
-    try {
-      const amount =
-        Number(
-          req.body.amount
-        );
-
-      const plan =
-        String(
-          req.body.plan || ''
-        ).trim();
-
-      const email =
-        String(
-          req.body.email ||
-          req.currentUser.email ||
-          ''
-        ).trim();
-
-      if (
-        !Number.isFinite(amount) ||
-        amount <= 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid deposit amount.'
-        });
-      }
-
-      if (!ASTROPAY_MERCHANT_KEY) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'AstroPay merchant key is not configured.'
-        });
-      }
-
-      if (!ASTROPAY_SECRET_KEY) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'AstroPay secret key is not configured.'
-        });
-      }
-
-      if (
-        !ASTROPAY_DEPOSIT_CALLBACK_URL
-      ) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'AstroPay deposit callback URL is not configured.'
-        });
-      }
-
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Email is required for payment.'
-        });
-      }
-
-      const orderId =
-        makeRef('DEP');
-
-      const astro =
-        await astroPayRequest(
-          '/v1/payins/create',
-          {
-            orderId,
-
-            amount:
-              amount.toFixed(2),
-
-            callbackUrl:
-              ASTROPAY_DEPOSIT_CALLBACK_URL,
-
-            name:
-              req.currentUser.name,
-
-            phone:
-              req.currentUser.phone,
-
-            email,
-
-            channel:
-              req.body.channel ||
-              undefined
-          }
-        );
-
-      const result =
-        astro.result;
-
-      if (
-        !result ||
-        Number(result.code) !==
-          1000
-      ) {
-        return res.status(
-          astro.httpStatus >= 400
-            ? astro.httpStatus
-            : 400
-        ).json({
-          success: false,
-          message:
-            result?.msg ||
-            'AstroPay deposit creation failed.',
-          code:
-            result?.code || null
-        });
-      }
-
-      if (
-        !result.data ||
-        !result.data.pay_url
-      ) {
-        return res.status(502).json({
-          success: false,
-          message:
-            'AstroPay did not return pay_url.'
-        });
-      }
-
-      const payment =
-        await Payment.create({
-          user_id:
-            req.currentUser._id,
-
-          plan:
-            plan || null,
-
-          amount:
-            Math.round(
-              amount * 100
-            ),
-
-          currency:
-            'INR',
-
-          merchant_order_id:
-            result.data.order_id ||
-            orderId,
-
-          platform_order_id:
-            result.data.order_id ||
-            orderId,
-
-          pay_url:
-            result.data.pay_url,
-
-          status:
-            'created',
-
-          created_at:
-            new Date()
-        });
-
-      return res.json({
-        success: true,
-
-        paymentId:
-          payment._id,
-
-        orderId:
-          payment.merchant_order_id,
-
-        payUrl:
-          payment.pay_url,
-
-        amount,
-
-        currency:
-          'INR'
-      });
-
-    } catch (error) {
-      console.error(
-        'AstroPay create deposit error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          error.message ||
-          'Unable to create deposit order.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ASTROPAY - QUERY DEPOSIT
-// =====================================================
-
-app.get(
-  '/api/payment/status/:orderId',
-  login,
-  async (req, res) => {
-    try {
-      const orderId =
-        String(
-          req.params.orderId || ''
-        ).trim();
-
-      const payment =
-        await Payment.findOne({
-          merchant_order_id:
-            orderId,
-
-          user_id:
-            req.currentUser._id
-        });
-
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Payment not found.'
-        });
-      }
-
-      const astro =
-        await astroPayRequest(
-          '/v1/payins/query',
-          {
-            orderId
-          }
-        );
-
-      const result =
-        astro.result;
-
-      if (
-        !result ||
-        Number(result.code) !==
-          1000
-      ) {
-        return res.status(
-          astro.httpStatus >= 400
-            ? astro.httpStatus
-            : 400
-        ).json({
-          success: false,
-          message:
-            result?.msg ||
-            'Unable to query AstroPay payment.'
-        });
-      }
-
-      const data =
-        result.data || {};
-
-      return res.json({
-        success: true,
-
-        status:
-          Number(data.status),
-
-        orderId:
-          data.orderId,
-
-        amount:
-          Number(
-            data.amount || 0
-          ),
-
-        commission:
-          Number(
-            data.commission || 0
-          ),
-
-        utr:
-          data.utr || null,
-
-        created_at:
-          data.createTime || null,
-
-        updated_at:
-          data.updateTime || null
-      });
-
-    } catch (error) {
-      console.error(
-        'AstroPay deposit query error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to check payment status.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ASTROPAY - DEPOSIT WEBHOOK
-// =====================================================
-
-app.post(
-  '/api/payment/webhook',
-  async (req, res) => {
-    try {
-      const payload =
-        req.body || {};
-
-      console.log(
-        'ASTROPAY DEPOSIT WEBHOOK:',
-        payload
-      );
-
-      if (
-        !verifyAstroPayWebhook(
-          payload
-        )
-      ) {
-        console.error(
-          'Invalid AstroPay deposit signature.'
-        );
-
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid signature.'
-        });
-      }
-
-      const orderId =
-        String(
-          payload.orderId || ''
-        ).trim();
-
-      if (!orderId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Missing orderId.'
-        });
-      }
-
-      const status =
-        Number(
-          payload.status
-        );
-
-      if (
-        status !== 9 &&
-        status !== 10
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Pending status ignored.'
-        });
-      }
-
-      const payment =
-        await Payment.findOne({
-          merchant_order_id:
-            orderId
-        });
-
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Payment order not found.'
-        });
-      }
-
-      // Already processed
-      if (
-        (
-          status === 10 &&
-          (
-            payment.status ===
-              'paid' ||
-            payment.status ===
-              'captured'
-          )
-        ) ||
-        (
-          status === 9 &&
-          payment.status ===
-            'failed'
-        )
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Already processed.'
-        });
-      }
-
-      const webhookAmount =
-        Number(
-          payload.amount
-        );
-
-      const expectedAmount =
-        Number(
-          payment.amount
-        ) / 100;
-
-      if (
-        !Number.isFinite(
-          webhookAmount
-        ) ||
-        Math.abs(
-          webhookAmount -
-          expectedAmount
-        ) > 0.01
-      ) {
-        console.error(
-          'AstroPay deposit amount mismatch.',
-          {
-            orderId,
-            webhookAmount,
-            expectedAmount
-          }
-        );
-
-        return res.status(400).json({
-          success: false,
-          message:
-            'Amount mismatch.'
-        });
-      }
-
-      // FAILED
-      if (status === 9) {
-        payment.status =
-          'failed';
-
-        payment.commission =
-          Math.round(
-            Number(
-              payload.commission || 0
-            ) * 100
-          );
-
-        payment.utr =
-          payload.utr ||
-          null;
-
-        await payment.save();
-
-        return res.status(200).json({
-          success: true,
-          message:
-            'Failed payment recorded.'
-        });
-      }
-
-      // SUCCESS
-      const mongoSession =
-        await mongoose.startSession();
-
-      try {
-        await mongoSession.withTransaction(
-          async () => {
-            const freshPayment =
-              await Payment.findOne({
-                merchant_order_id:
-                  orderId
-              }).session(
-                mongoSession
-              );
-
-            if (!freshPayment) {
-              throw new Error(
-                'Payment not found.'
-              );
-            }
-
-            if (
-              freshPayment.status ===
-                'paid' ||
-              freshPayment.status ===
-                'captured'
-            ) {
-              return;
-            }
-
-            const wallet =
-              await ensureWallet(
-                freshPayment.user_id,
-                mongoSession
-              );
-
-            const oldBalance =
-              Number(
-                wallet.balance || 0
-              );
-
-            const creditAmount =
-              Number(
-                freshPayment.amount
-              );
-
-            const newBalance =
-              oldBalance +
-              creditAmount;
-
-            wallet.balance =
-              newBalance;
-
-            wallet.updated_at =
-              new Date();
-
-            await wallet.save({
-              session:
-                mongoSession
-            });
-
-            await WalletTransaction.create(
-              [
-                {
-                  user_id:
-                    freshPayment.user_id,
-
-                  type:
-                    'credit',
-
-                  amount:
-                    creditAmount,
-
-                  balance_after:
-                    newBalance,
-
-                  reference_type:
-                    'payment',
-
-                  reference_id:
-                    String(
-                      freshPayment._id
-                    ),
-
-                  created_at:
-                    new Date()
-                }
-              ],
-              {
-                session:
-                  mongoSession
-              }
-            );
-
-            freshPayment.status =
-              'paid';
-
-            freshPayment.commission =
-              Math.round(
-                Number(
-                  payload.commission ||
-                    0
-                ) * 100
-              );
-
-            freshPayment.utr =
-              payload.utr ||
-              null;
-
-            freshPayment.paid_at =
-              new Date();
-
-            await freshPayment.save({
-              session:
-                mongoSession
-            });
-          }
-        );
-
-      } finally {
-        await mongoSession.endSession();
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          'Deposit processed successfully.'
-      });
-
-    } catch (error) {
-      console.error(
-        'AstroPay deposit webhook error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Webhook processing failed.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ORDERS
-// =====================================================
+/* ======================================================
+   PAYMENT GATEWAY REMOVED
+   ======================================================
+
+   AstroPay / WatchPay / rspayment.shop payment code
+   has intentionally been removed.
+
+   Removed:
+   - Payment model
+   - payment create-order
+   - payment webhook
+   - payment return
+   - gateway API
+   - gateway merchant ID
+   - gateway URLs
+   - automatic deposit credit
+   - gateway withdrawal API
+   - gateway credentials
+
+   ====================================================== */
+
+/* ======================================================
+   ORDERS
+   ====================================================== */
 
 app.get(
   '/api/orders',
   login,
   async (req, res) => {
-    try {
-      const payments =
-        await Payment.find({
-          user_id:
-            req.currentUser._id
-        })
-        .sort({
-          created_at: -1
-        })
-        .lean();
-
-      const orders =
-        payments.map(
-          payment => ({
-            id:
-              payment._id,
-
-            plan:
-              payment.plan,
-
-            amount:
-              Number(
-                payment.amount || 0
-              ) / 100,
-
-            currency:
-              payment.currency,
-
-            merchant_order_id:
-              payment.merchant_order_id,
-
-            platform_order_id:
-              payment.platform_order_id,
-
-            status:
-              payment.status,
-
-            pay_url:
-              payment.pay_url,
-
-            commission:
-              Number(
-                payment.commission || 0
-              ) / 100,
-
-            utr:
-              payment.utr,
-
-            created_at:
-              payment.created_at,
-
-            paid_at:
-              payment.paid_at
-          })
-        );
-
-      return res.json({
-        success: true,
-        orders
-      });
-
-    } catch (error) {
-      console.error(
-        'Orders error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to load orders.'
-      });
-    }
+    return res.json({
+      orders: []
+    });
   }
 );
 
-
-// =====================================================
-// CREATE ASTROPAY WITHDRAWAL
-// =====================================================
+/* ======================================================
+   WITHDRAWAL REQUEST
+   Manual withdrawal system only.
+   No payment gateway is connected.
+   ====================================================== */
 
 app.post(
   '/api/withdrawals',
   login,
   async (req, res) => {
-    let mongoSession =
-      null;
-
     try {
+      const uid =
+        req.session.userId;
+
       const amount =
-        Number(
-          req.body.amount
-        );
+        Number(req.body.amount);
 
       const method =
         String(
-          req.body.method ||
-          req.body.withdrawalMethod ||
-          'UPI'
-        )
-        .trim()
-        .toUpperCase();
-
-      const upiId =
-        String(
-          req.body.upi_id ||
-          req.body.upiId ||
-          req.body.account ||
-          ''
-        ).trim();
-
-      const accountName =
-        String(
-          req.body.account_name ||
-          req.body.accountName ||
-          req.body.personName ||
-          ''
-        ).trim();
-
-      const accountNumber =
-        String(
-          req.body.account_number ||
-          req.body.accountNumber ||
-          ''
-        ).trim();
-
-      const accountPhone =
-        String(
-          req.body.account_phone ||
-          req.body.accountPhone ||
-          req.currentUser.phone ||
-          ''
-        ).trim();
-
-      const ifsc =
-        String(
-          req.body.ifsc ||
-          req.body.IFSC ||
-          req.body.bank_code ||
-          ''
-        )
-        .trim()
-        .toUpperCase();
+          req.body.method || ''
+        ).toUpperCase();
 
       if (
         !Number.isFinite(amount) ||
-        amount <= 0
+        amount < 50
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid withdrawal amount.'
-        });
-      }
-
-      if (amount < 50) {
         return res.status(400).json({
           success: false,
           message:
@@ -2293,26 +1004,8 @@ app.post(
         });
       }
 
-      if (
-        !ASTROPAY_MERCHANT_KEY ||
-        !ASTROPAY_SECRET_KEY
-      ) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'AstroPay credentials are not configured.'
-        });
-      }
-
-      if (
-        !ASTROPAY_WITHDRAW_CALLBACK_URL
-      ) {
-        return res.status(500).json({
-          success: false,
-          message:
-            'AstroPay withdrawal callback URL is not configured.'
-        });
-      }
+      const pa =
+        moneyToPaise(amount);
 
       if (
         !['UPI', 'BANK'].includes(
@@ -2322,28 +1015,25 @@ app.post(
         return res.status(400).json({
           success: false,
           message:
-            'Only UPI and BANK withdrawals are supported.'
+            'Please select a valid withdrawal method.'
         });
       }
 
-      // -------------------------------------------------
-      // UPI VALIDATION
-      // -------------------------------------------------
+      let upi = null;
+      let name = null;
+      let last4 = null;
+      let ifsc = null;
 
-      if (
-        method === 'UPI'
-      ) {
-        if (!upiId) {
-          return res.status(400).json({
-            success: false,
-            message:
-              'UPI ID is required.'
-          });
-        }
+      if (method === 'UPI') {
+        upi =
+          String(
+            req.body.upiId || ''
+          ).trim();
 
         if (
-          !/^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+$/
-            .test(upiId)
+          !/^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/.test(
+            upi
+          )
         ) {
           return res.status(400).json({
             success: false,
@@ -2351,1449 +1041,251 @@ app.post(
               'Please enter a valid UPI ID.'
           });
         }
-      }
+      } else {
+        name =
+          String(
+            req.body.accountName ||
+              ''
+          ).trim();
 
-      // -------------------------------------------------
-      // BANK VALIDATION
-      // -------------------------------------------------
+        const ac =
+          String(
+            req.body.accountNumber ||
+              ''
+          ).trim();
 
-      if (
-        method === 'BANK'
-      ) {
-        if (!accountName) {
+        const cf =
+          String(
+            req.body.confirmAccountNumber ||
+              ''
+          ).trim();
+
+        if (
+          name.length < 2 ||
+          !/^[0-9]{9,18}$/.test(
+            ac
+          ) ||
+          ac !== cf
+        ) {
           return res.status(400).json({
             success: false,
             message:
-              'Account holder name is required.'
+              'Please check bank details.'
           });
         }
 
-        if (!accountNumber) {
+        ifsc =
+          String(
+            req.body.ifsc || ''
+          )
+            .trim()
+            .toUpperCase();
+
+        if (
+          !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
+            ifsc
+          )
+        ) {
           return res.status(400).json({
             success: false,
             message:
-              'Bank account number is required.'
+              'Please enter a valid IFSC code.'
           });
         }
 
-        if (!ifsc) {
-          return res.status(400).json({
-            success: false,
-            message:
-              'IFSC / bank code is required.'
-          });
-        }
+        last4 =
+          ac.slice(-4);
       }
 
-      const amountPaise =
-        Math.round(
-          amount * 100
-        );
-
-      // -------------------------------------------------
-      // CHECK WALLET FIRST
-      // -------------------------------------------------
-
-      const wallet =
-        await ensureWallet(
-          req.currentUser._id
-        );
-
-      const balance =
-        Number(
-          wallet.balance || 0
-        );
-
-      if (
-        balance < amountPaise
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Insufficient wallet balance.'
-        });
-      }
-
-      // -------------------------------------------------
-      // CREATE ASTROPAY ORDER ID
-      // -------------------------------------------------
-
-      const orderId =
-        makeRef('WDR');
-
-      // -------------------------------------------------
-      // ASTROPAY PAYOUT REQUEST
-      // -------------------------------------------------
-
-      const payoutBody = {
-        orderId,
-
-        amount:
-          amount.toFixed(2),
-
-        callbackUrl:
-          ASTROPAY_WITHDRAW_CALLBACK_URL,
-
-        accountType:
-          method === 'UPI'
-            ? 'UPI'
-            : 'BANK',
-
-        account:
-          method === 'UPI'
-            ? upiId
-            : accountNumber,
-
-        bank_code:
-          method === 'BANK'
-            ? ifsc
-            : '',
-
-        accountPhone,
-
-        personName:
-          method === 'BANK'
-            ? accountName
-            : (
-                accountName ||
-                req.currentUser.name
-              )
-      };
-
-      const astro =
-        await astroPayRequest(
-          '/v1/payouts/create',
-          payoutBody
-        );
-
-      const result =
-        astro.result;
-
-      if (
-        !result ||
-        Number(result.code) !==
-          1000
-      ) {
-        return res.status(
-          astro.httpStatus >= 400
-            ? astro.httpStatus
-            : 400
-        ).json({
-          success: false,
-          message:
-            result?.msg ||
-            'AstroPay withdrawal creation failed.',
-          code:
-            result?.code || null
-        });
-      }
-
-      const data =
-        result.data || {};
-
-      // -------------------------------------------------
-      // NOW DEDUCT USER WALLET
-      // -------------------------------------------------
-
-      mongoSession =
+      const dbSession =
         await mongoose.startSession();
 
-      let withdrawal;
+      let result;
 
       try {
-        await mongoSession.withTransaction(
+        await dbSession.withTransaction(
           async () => {
-            const freshWallet =
-              await ensureWallet(
-                req.currentUser._id,
-                mongoSession
-              );
-
-            const currentBalance =
-              Number(
-                freshWallet.balance || 0
+            const w =
+              await Wallet.findOne({
+                user_id: uid
+              }).session(
+                dbSession
               );
 
             if (
-              currentBalance <
-              amountPaise
+              !w ||
+              Number(w.balance) <
+                pa
             ) {
-              throw new Error(
-                'Insufficient wallet balance.'
-              );
+              result = {
+                error:
+                  'INSUFFICIENT',
+
+                balance: w
+                  ? Number(
+                      w.balance
+                    )
+                  : 0
+              };
+
+              return;
             }
-
-            const newBalance =
-              currentBalance -
-              amountPaise;
-
-            freshWallet.balance =
-              newBalance;
-
-            freshWallet.updated_at =
-              new Date();
-
-            await freshWallet.save({
-              session:
-                mongoSession
-            });
 
             const created =
               await Withdrawal.create(
                 [
                   {
-                    user_id:
-                      req.currentUser._id,
+                    user_id: uid,
 
-                    amount:
-                      amountPaise,
+                    amount: pa,
 
                     currency:
                       'INR',
 
-                    method:
-                      method,
+                    method,
 
                     upi_id:
-                      method === 'UPI'
-                        ? upiId
-                        : null,
+                      upi,
 
                     account_name:
-                      method === 'BANK'
-                        ? accountName
-                        : (
-                            accountName ||
-                            null
-                          ),
+                      name,
 
                     account_last4:
-                      method === 'BANK'
-                        ? accountNumber.slice(-4)
-                        : null,
+                      last4,
 
-                    ifsc:
-                      method === 'BANK'
-                        ? ifsc
-                        : null,
-
-                    account_phone:
-                      accountPhone,
-
-                    astropay_order_id:
-                      data.orderId ||
-                      orderId,
-
-                    astropay_utr:
-                      data.utr ||
-                      null,
-
-                    commission:
-                      Math.round(
-                        Number(
-                          data.commission ||
-                            0
-                        ) * 100
-                      ),
-
-                    remark:
-                      null,
+                    ifsc,
 
                     status:
-                      Number(
-                        data.status
-                      ) === 10
-                        ? 'completed'
-                        : Number(
-                            data.status
-                          ) === 9
-                          ? 'failed'
-                          : 'processing',
-
-                    created_at:
-                      new Date(),
-
-                    processed_at:
-                      Number(
-                        data.status
-                      ) === 10 ||
-                      Number(
-                        data.status
-                      ) === 9
-                        ? new Date()
-                        : null
+                      'pending'
                   }
                 ],
                 {
                   session:
-                    mongoSession
+                    dbSession
                 }
               );
 
-            withdrawal =
-              created[0];
-
-            // If AstroPay immediately says FAILED,
-            // refund the user's wallet.
-            if (
+            const newBalance =
               Number(
-                data.status
-              ) === 9
-            ) {
-              freshWallet.balance =
-                currentBalance;
+                w.balance
+              ) - pa;
 
-              freshWallet.updated_at =
-                new Date();
-
-              await freshWallet.save({
-                session:
-                  mongoSession
-              });
-
-              await WalletTransaction.create(
-                [
-                  {
-                    user_id:
-                      req.currentUser._id,
-
-                    type:
-                      'refund',
-
-                    amount:
-                      amountPaise,
-
-                    balance_after:
-                      currentBalance,
-
-                    reference_type:
-                      'withdrawal_refund',
-
-                    reference_id:
-                      String(
-                        withdrawal._id
-                      ),
-
-                    created_at:
-                      new Date()
-                  }
-                ],
-                {
-                  session:
-                    mongoSession
-                }
-              );
-            } else {
-              await WalletTransaction.create(
-                [
-                  {
-                    user_id:
-                      req.currentUser._id,
-
-                    type:
-                      'debit',
-
-                    amount:
-                      amountPaise,
-
-                    balance_after:
-                      newBalance,
-
-                    reference_type:
-                      'withdrawal',
-
-                    reference_id:
-                      String(
-                        withdrawal._id
-                      ),
-
-                    created_at:
-                      new Date()
-                  }
-                ],
-                {
-                  session:
-                    mongoSession
-                }
-              );
-            }
-          }
-        );
-
-      } finally {
-        await mongoSession.endSession();
-      }
-
-      return res.json({
-        success: true,
-
-        message:
-          Number(data.status) === 9
-            ? 'Withdrawal failed and amount was refunded.'
-            : 'Withdrawal request submitted successfully.',
-
-        withdrawal: {
-          id:
-            withdrawal._id,
-
-          orderId:
-            withdrawal.astropay_order_id,
-
-          amount,
-
-          status:
-            withdrawal.status,
-
-          method,
-
-          commission:
-            Number(
-              data.commission || 0
-            ),
-
-          utr:
-            data.utr ||
-            null
-        }
-      });
-
-    } catch (error) {
-      console.error(
-        'AstroPay withdrawal error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          error.message ||
-          'Unable to submit withdrawal request.'
-      });
-
-    } finally {
-      if (mongoSession) {
-        try {
-          await mongoSession.endSession();
-        } catch {}
-      }
-    }
-  }
-);
-
-
-// =====================================================
-// ASTROPAY WITHDRAWAL WEBHOOK
-// =====================================================
-
-app.post(
-  '/api/withdrawal/webhook',
-  async (req, res) => {
-    try {
-      const payload =
-        req.body || {};
-
-      console.log(
-        'ASTROPAY WITHDRAWAL WEBHOOK:',
-        payload
-      );
-
-      if (
-        !verifyAstroPayWebhook(
-          payload
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid signature.'
-        });
-      }
-
-      const orderId =
-        String(
-          payload.orderId || ''
-        ).trim();
-
-      if (!orderId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Missing orderId.'
-        });
-      }
-
-      const status =
-        Number(
-          payload.status
-        );
-
-      if (
-        status !== 9 &&
-        status !== 10
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Pending status ignored.'
-        });
-      }
-
-      const withdrawal =
-        await Withdrawal.findOne({
-          astropay_order_id:
-            orderId
-        });
-
-      if (!withdrawal) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Withdrawal order not found.'
-        });
-      }
-
-      // -------------------------------------------------
-      // ALREADY FINAL
-      // -------------------------------------------------
-
-      if (
-        status === 10 &&
-        withdrawal.status ===
-          'completed'
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Withdrawal already completed.'
-        });
-      }
-
-      if (
-        status === 9 &&
-        withdrawal.status ===
-          'failed'
-      ) {
-        return res.status(200).json({
-          success: true,
-          message:
-            'Withdrawal already failed.'
-        });
-      }
-
-      // -------------------------------------------------
-      // AMOUNT CHECK
-      // -------------------------------------------------
-
-      const webhookAmount =
-        Number(
-          payload.amount
-        );
-
-      const expectedAmount =
-        Number(
-          withdrawal.amount
-        ) / 100;
-
-      if (
-        !Number.isFinite(
-          webhookAmount
-        ) ||
-        Math.abs(
-          webhookAmount -
-          expectedAmount
-        ) > 0.01
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Withdrawal amount mismatch.'
-        });
-      }
-
-      // -------------------------------------------------
-      // SUCCESS
-      // -------------------------------------------------
-
-      if (status === 10) {
-        withdrawal.status =
-          'completed';
-
-        withdrawal.astropay_utr =
-          payload.utr ||
-          null;
-
-        withdrawal.commission =
-          Math.round(
-            Number(
-              payload.commission || 0
-            ) * 100
-          );
-
-        withdrawal.remark =
-          payload.remark ||
-          null;
-
-        withdrawal.processed_at =
-          new Date();
-
-        await withdrawal.save();
-
-        return res.status(200).json({
-          success: true,
-          message:
-            'Withdrawal completed.'
-        });
-      }
-
-      // -------------------------------------------------
-      // FAILED
-      // -------------------------------------------------
-
-      if (status === 9) {
-        const mongoSession =
-          await mongoose.startSession();
-
-        try {
-          await mongoSession.withTransaction(
-            async () => {
-              const freshWithdrawal =
-                await Withdrawal.findOne({
-                  astropay_order_id:
-                    orderId
-                }).session(
-                  mongoSession
-                );
-
-              if (!freshWithdrawal) {
-                throw new Error(
-                  'Withdrawal not found.'
-                );
-              }
-
-              if (
-                freshWithdrawal.status ===
-                  'failed'
-              ) {
-                return;
-              }
-
-              const wallet =
-                await ensureWallet(
-                  freshWithdrawal.user_id,
-                  mongoSession
-                );
-
-              const oldBalance =
-                Number(
-                  wallet.balance || 0
-                );
-
-              const refundAmount =
-                Number(
-                  freshWithdrawal.amount
-                );
-
-              const newBalance =
-                oldBalance +
-                refundAmount;
-
-              wallet.balance =
-                newBalance;
-
-              wallet.updated_at =
-                new Date();
-
-              await wallet.save({
-                session:
-                  mongoSession
-              });
-
-              await WalletTransaction.create(
-                [
-                  {
-                    user_id:
-                      freshWithdrawal.user_id,
-
-                    type:
-                      'refund',
-
-                    amount:
-                      refundAmount,
-
-                    balance_after:
-                      newBalance,
-
-                    reference_type:
-                      'withdrawal_refund',
-
-                    reference_id:
-                      String(
-                        freshWithdrawal._id
-                      ),
-
-                    created_at:
-                      new Date()
-                  }
-                ],
-                {
-                  session:
-                    mongoSession
-                }
-              );
-
-              freshWithdrawal.status =
-                'failed';
-
-              freshWithdrawal.astropay_utr =
-                payload.utr ||
-                null;
-
-              freshWithdrawal.commission =
-                Math.round(
-                  Number(
-                    payload.commission ||
-                      0
-                  ) * 100
-                );
-
-              freshWithdrawal.remark =
-                payload.remark ||
-                null;
-
-              freshWithdrawal.processed_at =
-                new Date();
-
-              await freshWithdrawal.save({
-                session:
-                  mongoSession
-              });
-            }
-          );
-
-        } finally {
-          await mongoSession.endSession();
-        }
-
-        return res.status(200).json({
-          success: true,
-          message:
-            'Withdrawal failed and amount refunded.'
-        });
-      }
-
-    } catch (error) {
-      console.error(
-        'AstroPay withdrawal webhook error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Withdrawal webhook failed.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// USER WITHDRAWAL HISTORY
-// =====================================================
-
-app.get(
-  '/api/withdrawals',
-  login,
-  async (req, res) => {
-    try {
-      const withdrawals =
-        await Withdrawal.find({
-          user_id:
-            req.currentUser._id
-        })
-        .sort({
-          created_at: -1
-        })
-        .lean();
-
-      return res.json({
-        success: true,
-
-        withdrawals:
-          withdrawals.map(
-            item => ({
-              id:
-                item._id,
-
-              amount:
-                Number(
-                  item.amount || 0
-                ) / 100,
-
-              currency:
-                item.currency,
-
-              method:
-                item.method,
-
-              upi_id:
-                item.upi_id,
-
-              account_name:
-                item.account_name,
-
-              account_last4:
-                item.account_last4,
-
-              ifsc:
-                item.ifsc,
-
-              account_phone:
-                item.account_phone,
-
-              astropay_order_id:
-                item.astropay_order_id,
-
-              utr:
-                item.astropay_utr,
-
-              commission:
-                Number(
-                  item.commission || 0
-                ) / 100,
-
-              remark:
-                item.remark,
-
-              status:
-                item.status,
-
-              created_at:
-                item.created_at,
-
-              processed_at:
-                item.processed_at
-            })
-          )
-      });
-
-    } catch (error) {
-      console.error(
-        'Withdrawal history error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to load withdrawals.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ASTROPAY WITHDRAWAL QUERY
-// =====================================================
-
-app.get(
-  '/api/withdrawals/status/:orderId',
-  login,
-  async (req, res) => {
-    try {
-      const orderId =
-        String(
-          req.params.orderId || ''
-        ).trim();
-
-      const withdrawal =
-        await Withdrawal.findOne({
-          astropay_order_id:
-            orderId,
-
-          user_id:
-            req.currentUser._id
-        });
-
-      if (!withdrawal) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Withdrawal not found.'
-        });
-      }
-
-      const astro =
-        await astroPayRequest(
-          '/v1/payouts/query',
-          {
-            orderId
-          }
-        );
-
-      const result =
-        astro.result;
-
-      if (
-        !result ||
-        Number(result.code) !==
-          1000
-      ) {
-        return res.status(
-          astro.httpStatus >= 400
-            ? astro.httpStatus
-            : 400
-        ).json({
-          success: false,
-          message:
-            result?.msg ||
-            'Unable to query AstroPay withdrawal.'
-        });
-      }
-
-      const data =
-        result.data || {};
-
-      const status =
-        Number(
-          data.status
-        );
-
-      return res.json({
-        success: true,
-
-        orderId:
-          data.orderId,
-
-        amount:
-          Number(
-            data.amount || 0
-          ),
-
-        status,
-
-        utr:
-          data.utr ||
-          null,
-
-        created_at:
-          data.createTime ||
-          null,
-
-        updated_at:
-          data.updateTime ||
-          null
-      });
-
-    } catch (error) {
-      console.error(
-        'Withdrawal query error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to check withdrawal status.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ADMIN USERS
-// =====================================================
-
-app.get(
-  '/api/admin/users',
-  admin,
-  async (req, res) => {
-    try {
-      const users =
-        await User.find()
-          .select(
-            'name phone email referral_code referred_by banned'
-          )
-          .sort({
-            _id: -1
-          })
-          .lean();
-
-      const result = [];
-
-      for (
-        const user of users
-      ) {
-        const wallet =
-          await Wallet.findOne({
-            user_id:
-              user._id
-          }).lean();
-
-        result.push({
-          id:
-            user._id,
-
-          name:
-            user.name,
-
-          phone:
-            user.phone,
-
-          email:
-            user.email,
-
-          referral_code:
-            user.referral_code,
-
-          referred_by:
-            user.referred_by,
-
-          balance:
-            Number(
-              wallet?.balance || 0
-            ) / 100,
-
-          banned:
-            user.banned === true
-        });
-      }
-
-      return res.json({
-        success: true,
-        users:
-          result
-      });
-
-    } catch (error) {
-      console.error(
-        'Admin users error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to load users.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ADMIN BAN
-// =====================================================
-
-app.post(
-  '/api/admin/users/:userId/ban',
-  admin,
-  async (req, res) => {
-    try {
-      if (
-        !mongoose.isValidObjectId(
-          req.params.userId
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid user ID.'
-        });
-      }
-
-      const user =
-        await User.findById(
-          req.params.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'User not found.'
-        });
-      }
-
-      user.banned =
-        true;
-
-      await user.save();
-
-      return res.json({
-        success: true,
-        message:
-          'User banned successfully.'
-      });
-
-    } catch (error) {
-      console.error(
-        'Ban user error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to ban user.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ADMIN UNBAN
-// =====================================================
-
-app.post(
-  '/api/admin/users/:userId/unban',
-  admin,
-  async (req, res) => {
-    try {
-      if (
-        !mongoose.isValidObjectId(
-          req.params.userId
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid user ID.'
-        });
-      }
-
-      const user =
-        await User.findById(
-          req.params.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'User not found.'
-        });
-      }
-
-      user.banned =
-        false;
-
-      await user.save();
-
-      return res.json({
-        success: true,
-        message:
-          'User unbanned successfully.'
-      });
-
-    } catch (error) {
-      console.error(
-        'Unban user error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to unban user.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ADMIN LOGIN AS USER
-// =====================================================
-
-app.post(
-  '/api/admin/users/:userId/login-as',
-  admin,
-  async (req, res) => {
-    try {
-      const user =
-        await User.findById(
-          req.params.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'User not found.'
-        });
-      }
-
-      if (user.banned) {
-        return res.status(403).json({
-          success: false,
-          message:
-            'This user is banned.'
-        });
-      }
-
-      req.session.regenerate(
-        error => {
-          if (error) {
-            return res.status(500).json({
-              success: false,
-              message:
-                'Unable to create session.'
-            });
-          }
-
-          req.session.userId =
-            user._id.toString();
-
-          req.session.isAdmin =
-            false;
-
-          req.session.save(
-            saveError => {
-              if (saveError) {
-                return res.status(500).json({
-                  success: false,
-                  message:
-                    'Unable to save session.'
-                });
-              }
-
-              return res.json({
-                success: true,
-                message:
-                  'Logged in as user successfully.',
-                user:
-                  safeUser(user)
-              });
-            }
-          );
-        }
-      );
-
-    } catch (error) {
-      console.error(
-        'Login as user error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to login as user.'
-      });
-    }
-  }
-);
-
-
-// =====================================================
-// ADMIN BALANCE ADJUSTMENT
-// =====================================================
-
-app.post(
-  '/api/admin/users/:userId/balance',
-  admin,
-  async (req, res) => {
-    let mongoSession =
-      null;
-
-    try {
-      const amount =
-        Number(
-          req.body.amount
-        );
-
-      const type =
-        String(
-          req.body.type ||
-          'credit'
-        ).toLowerCase();
-
-      const reason =
-        String(
-          req.body.reason ||
-          'Admin adjustment'
-        ).trim();
-
-      if (
-        !Number.isFinite(amount) ||
-        amount <= 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid amount.'
-        });
-      }
-
-      if (
-        !['credit', 'debit'].includes(
-          type
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid adjustment type.'
-        });
-      }
-
-      const amountPaise =
-        Math.round(
-          amount * 100
-        );
-
-      mongoSession =
-        await mongoose.startSession();
-
-      let newBalance =
-        0;
-
-      try {
-        await mongoSession.withTransaction(
-          async () => {
-            const user =
-              await User.findById(
-                req.params.userId
-              ).session(
-                mongoSession
-              );
-
-            if (!user) {
-              throw new Error(
-                'User not found.'
-              );
-            }
-
-            const wallet =
-              await ensureWallet(
-                user._id,
-                mongoSession
-              );
-
-            const oldBalance =
-              Number(
-                wallet.balance || 0
-              );
-
-            if (
-              type === 'debit' &&
-              oldBalance <
-                amountPaise
-            ) {
-              throw new Error(
-                'Insufficient wallet balance.'
-              );
-            }
-
-            newBalance =
-              type === 'credit'
-                ? oldBalance +
-                  amountPaise
-                : oldBalance -
-                  amountPaise;
-
-            wallet.balance =
+            w.balance =
               newBalance;
 
-            wallet.updated_at =
+            w.updated_at =
               new Date();
 
-            await wallet.save({
+            await w.save({
               session:
-                mongoSession
+                dbSession
             });
 
             await WalletTransaction.create(
               [
                 {
                   user_id:
-                    user._id,
+                    uid,
 
                   type:
-                    type,
+                    'withdrawal',
 
                   amount:
-                    amountPaise,
+                    -pa,
 
                   balance_after:
                     newBalance,
 
                   reference_type:
-                    'admin_adjustment',
+                    'withdrawal',
 
                   reference_id:
-                    makeRef('ADMIN'),
-
-                  created_at:
-                    new Date()
+                    String(
+                      created[0]._id
+                    )
                 }
               ],
               {
                 session:
-                  mongoSession
+                  dbSession
               }
             );
+
+            result = {
+              id:
+                created[0]._id,
+
+              balance:
+                newBalance
+            };
           }
         );
-
       } finally {
-        await mongoSession.endSession();
-        mongoSession =
-          null;
+        await dbSession.endSession();
       }
 
-      return res.json({
+      if (
+        result.error ===
+        'INSUFFICIENT'
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            'Insufficient wallet balance.',
+
+          balance:
+            result.balance /
+            100
+        });
+      }
+
+      return res.status(201).json({
         success: true,
 
         message:
-          reason,
+          'Withdrawal request submitted and amount reserved.',
+
+        withdrawalId:
+          result.id,
+
+        status:
+          'pending',
 
         balance:
-          newBalance / 100
+          result.balance /
+          100
       });
-
-    } catch (error) {
-      if (mongoSession) {
-        try {
-          await mongoSession.endSession();
-        } catch {}
-      }
-
+    } catch (e) {
       console.error(
-        'Admin balance error:',
-        error
+        'WITHDRAW ERROR:',
+        e
       );
 
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
+
         message:
-          error.message ||
-          'Unable to update balance.'
+          'Unable to submit withdrawal request.'
       });
     }
   }
 );
 
-
-// =====================================================
-// ADMIN WITHDRAWALS
-// =====================================================
+/* ======================================================
+   USER WITHDRAWAL HISTORY
+   ====================================================== */
 
 app.get(
-  '/api/admin/withdrawals',
-  admin,
+  '/api/withdrawals',
+  login,
   async (req, res) => {
     try {
-      const withdrawals =
-        await Withdrawal.find()
-          .populate(
-            'user_id',
-            'name phone'
-          )
+      const rows =
+        await Withdrawal.find({
+          user_id:
+            req.session.userId
+        })
           .sort({
             created_at: -1
           })
@@ -3803,82 +1295,494 @@ app.get(
         success: true,
 
         withdrawals:
-          withdrawals.map(
-            item => ({
-              id:
-                item._id,
+          rows.map((x) => ({
+            id: x._id,
 
-              user:
-                item.user_id
-                  ? {
-                      id:
-                        item.user_id._id,
+            amount:
+              Number(x.amount) /
+              100,
 
-                      name:
-                        item.user_id.name,
+            currency:
+              x.currency,
 
-                      phone:
-                        item.user_id.phone
-                    }
-                  : null,
+            method:
+              x.method,
 
-              amount:
-                Number(
-                  item.amount || 0
-                ) / 100,
+            destination:
+              x.method === 'UPI'
+                ? x.upi_id
+                : x.account_last4
+                ? '****' +
+                  x.account_last4
+                : null,
 
-              currency:
-                item.currency,
+            accountName:
+              x.account_name ||
+              null,
 
-              method:
-                item.method,
+            ifsc:
+              x.ifsc || null,
 
-              upi_id:
-                item.upi_id,
+            status:
+              x.status,
 
-              account_name:
-                item.account_name,
+            createdAt:
+              x.created_at,
 
-              account_last4:
-                item.account_last4,
-
-              ifsc:
-                item.ifsc,
-
-              astropay_order_id:
-                item.astropay_order_id,
-
-              utr:
-                item.astropay_utr,
-
-              commission:
-                Number(
-                  item.commission || 0
-                ) / 100,
-
-              remark:
-                item.remark,
-
-              status:
-                item.status,
-
-              created_at:
-                item.created_at,
-
-              processed_at:
-                item.processed_at
-            })
-          )
+            processedAt:
+              x.processed_at ||
+              null
+          }))
       });
-
-    } catch (error) {
+    } catch (e) {
       console.error(
-        'Admin withdrawals error:',
-        error
+        'WITHDRAWAL HISTORY ERROR:',
+        e
       );
 
       return res.status(500).json({
         success: false,
+
+        message:
+          'Unable to load withdrawal history.'
+      });
+    }
+  }
+);
+
+/* ======================================================
+   ADMIN USERS
+   ====================================================== */
+
+app.get(
+  '/api/admin/users',
+  admin,
+  async (req, res) => {
+    try {
+      const users =
+        await User.find()
+          .select(
+            '_id name phone referral_code referred_by created_at'
+          )
+          .sort({
+            created_at: -1
+          })
+          .lean();
+
+      const ids =
+        users.map(
+          (u) => u._id
+        );
+
+      const wallets =
+        await Wallet.find({
+          user_id: {
+            $in: ids
+          }
+        }).lean();
+
+      const balanceMap =
+        new Map(
+          wallets.map((w) => [
+            String(w.user_id),
+            Number(w.balance)
+          ])
+        );
+
+      return res.json({
+        success: true,
+
+        users:
+          users.map((x) => ({
+            id: x._id,
+
+            name: x.name,
+
+            phone: x.phone,
+
+            referral_code:
+              x.referral_code,
+
+            referred_by:
+              x.referred_by,
+
+            created_at:
+              x.created_at,
+
+            balance:
+              (
+                balanceMap.get(
+                  String(x._id)
+                ) || 0
+              ) / 100
+          }))
+      });
+    } catch (e) {
+      console.error(
+        'ADMIN USERS ERROR:',
+        e
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          'Unable to load users.'
+      });
+    }
+  }
+);
+
+/* ======================================================
+   ADMIN BALANCE ADJUSTMENT
+   ====================================================== */
+
+app.post(
+  '/api/admin/users/:id/balance',
+  admin,
+  async (req, res) => {
+    try {
+      const uid =
+        req.params.id;
+
+      const amount =
+        Number(
+          req.body.amount
+        );
+
+      const type =
+        String(
+          req.body.type ||
+            'credit'
+        ).toLowerCase();
+
+      const reason =
+        String(
+          req.body.reason ||
+            'Admin adjustment'
+        ).trim();
+
+      if (
+        !mongoose.isValidObjectId(
+          uid
+        ) ||
+        !Number.isFinite(
+          amount
+        ) ||
+        amount <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid user or amount.'
+        });
+      }
+
+      if (
+        ![
+          'credit',
+          'debit'
+        ].includes(type)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid balance adjustment type.'
+        });
+      }
+
+      const u =
+        await User.findById(
+          uid
+        ).select(
+          '_id name phone'
+        );
+
+      if (!u) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'User not found.'
+        });
+      }
+
+      const pa =
+        moneyToPaise(
+          amount
+        );
+
+      const delta =
+        type === 'debit'
+          ? -pa
+          : pa;
+
+      const dbSession =
+        await mongoose.startSession();
+
+      let result;
+
+      try {
+        await dbSession.withTransaction(
+          async () => {
+            const w =
+              (await Wallet.findOne({
+                user_id: uid
+              }).session(
+                dbSession
+              )) ||
+              new Wallet({
+                user_id: uid,
+                balance: 0
+              });
+
+            const oldBalance =
+              Number(
+                w.balance
+              );
+
+            const newBalance =
+              oldBalance +
+              delta;
+
+            if (
+              newBalance < 0
+            ) {
+              result = {
+                error:
+                  'NEGATIVE',
+
+                old:
+                  oldBalance
+              };
+
+              return;
+            }
+
+            w.balance =
+              newBalance;
+
+            w.updated_at =
+              new Date();
+
+            await w.save({
+              session:
+                dbSession
+            });
+
+            await WalletTransaction.create(
+              [
+                {
+                  user_id:
+                    uid,
+
+                  type:
+                    'admin_adjustment',
+
+                  amount:
+                    delta,
+
+                  balance_after:
+                    newBalance,
+
+                  reference_type:
+                    'admin',
+
+                  reference_id:
+                    'admin_' +
+                    Date.now() +
+                    '_' +
+                    crypto
+                      .randomBytes(
+                        3
+                      )
+                      .toString(
+                        'hex'
+                      )
+                }
+              ],
+              {
+                session:
+                  dbSession
+              }
+            );
+
+            result = {
+              old:
+                oldBalance,
+
+              nb:
+                newBalance
+            };
+          }
+        );
+      } finally {
+        await dbSession.endSession();
+      }
+
+      if (
+        result.error ===
+        'NEGATIVE'
+      ) {
+        return res.status(400).json({
+          success: false,
+
+          message:
+            'Balance cannot go below zero.',
+
+          balance:
+            result.old /
+            100
+        });
+      }
+
+      return res.json({
+        success: true,
+
+        message:
+          'User wallet updated.',
+
+        user: u,
+
+        type,
+
+        reason,
+
+        oldBalance:
+          result.old /
+          100,
+
+        newBalance:
+          result.nb /
+          100
+      });
+    } catch (e) {
+      console.error(
+        'ADMIN BALANCE ERROR:',
+        e
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          'Unable to update user balance.'
+      });
+    }
+  }
+);
+
+/* ======================================================
+   ADMIN WITHDRAWALS
+   ====================================================== */
+
+async function getAdminWithdrawals() {
+  const rows =
+    await Withdrawal.find()
+      .sort({
+        created_at: -1
+      })
+      .lean();
+
+  const ids =
+    rows.map(
+      (x) => x.user_id
+    );
+
+  const users =
+    await User.find({
+      _id: {
+        $in: ids
+      }
+    })
+      .select(
+        '_id name phone'
+      )
+      .lean();
+
+  const userMap =
+    new Map(
+      users.map((u) => [
+        String(u._id),
+        u
+      ])
+    );
+
+  return rows.map((x) => {
+    const u =
+      userMap.get(
+        String(x.user_id)
+      );
+
+    return {
+      id: x._id,
+
+      userId:
+        x.user_id,
+
+      name:
+        u ? u.name : '',
+
+      phone:
+        u ? u.phone : '',
+
+      amount:
+        Number(x.amount) /
+        100,
+
+      currency:
+        x.currency,
+
+      method:
+        x.method,
+
+      destination:
+        x.method === 'UPI'
+          ? x.upi_id
+          : x.account_last4
+          ? '****' +
+            x.account_last4
+          : null,
+
+      accountName:
+        x.account_name ||
+        null,
+
+      ifsc:
+        x.ifsc || null,
+
+      status:
+        x.status,
+
+      createdAt:
+        x.created_at,
+
+      processedAt:
+        x.processed_at ||
+        null
+    };
+  });
+}
+
+app.get(
+  '/api/admin/withdrawals',
+  admin,
+  async (req, res) => {
+    try {
+      return res.json({
+        success: true,
+
+        withdrawals:
+          await getAdminWithdrawals()
+      });
+    } catch (e) {
+      console.error(
+        'ADMIN WITHDRAWALS ERROR:',
+        e
+      );
+
+      return res.status(500).json({
+        success: false,
+
         message:
           'Unable to load withdrawals.'
       });
@@ -3886,22 +1790,36 @@ app.get(
   }
 );
 
-
-// =====================================================
-// ADMIN PROCESSING
-// =====================================================
+/* ======================================================
+   ADMIN PROCESSING
+   ====================================================== */
 
 app.post(
   '/api/admin/withdrawals/:id/processing',
   admin,
   async (req, res) => {
     try {
-      const withdrawal =
+      const id =
+        req.params.id;
+
+      if (
+        !mongoose.isValidObjectId(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal ID.'
+        });
+      }
+
+      const w =
         await Withdrawal.findById(
-          req.params.id
+          id
         );
 
-      if (!withdrawal) {
+      if (!w) {
         return res.status(404).json({
           success: false,
           message:
@@ -3910,48 +1828,77 @@ app.post(
       }
 
       if (
-        withdrawal.status !==
-        'processing'
+        w.status !== 'pending'
       ) {
-        return res.status(400).json({
+        return res.status(409).json({
           success: false,
           message:
-            'Withdrawal is not in processing state.'
+            'Withdrawal is already ' +
+            w.status +
+            '.'
         });
       }
 
+      w.status =
+        'processing';
+
+      await w.save();
+
       return res.json({
         success: true,
-        message:
-          'Withdrawal is already being processed by AstroPay.'
-      });
 
-    } catch (error) {
+        message:
+          'Withdrawal moved to Processing.',
+
+        status:
+          'processing'
+      });
+    } catch (e) {
+      console.error(
+        'PROCESS WITHDRAWAL ERROR:',
+        e
+      );
+
       return res.status(500).json({
         success: false,
+
         message:
-          'Unable to update withdrawal.'
+          'Unable to process withdrawal.'
       });
     }
   }
 );
 
-
-// =====================================================
-// ADMIN COMPLETE
-// =====================================================
+/* ======================================================
+   ADMIN COMPLETE
+   ====================================================== */
 
 app.post(
   '/api/admin/withdrawals/:id/complete',
   admin,
   async (req, res) => {
     try {
-      const withdrawal =
+      const id =
+        req.params.id;
+
+      if (
+        !mongoose.isValidObjectId(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal ID.'
+        });
+      }
+
+      const w =
         await Withdrawal.findById(
-          req.params.id
+          id
         );
 
-      if (!withdrawal) {
+      if (!w) {
         return res.status(404).json({
           success: false,
           message:
@@ -3959,16 +1906,53 @@ app.post(
         });
       }
 
+      if (
+        ![
+          'pending',
+          'processing'
+        ].includes(
+          w.status
+        )
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            'Withdrawal is already ' +
+            w.status +
+            '.'
+        });
+      }
+
+      w.status =
+        'completed';
+
+      w.processed_at =
+        new Date();
+
+      await w.save();
+
       return res.json({
         success: true,
 
         message:
-          'AstroPay controls final settlement. Use the webhook/query status.'
-      });
+          'Withdrawal marked as completed.',
 
-    } catch (error) {
+        note:
+          'This records the payout only. It does not send money.',
+
+        amount:
+          Number(w.amount) /
+          100
+      });
+    } catch (e) {
+      console.error(
+        'COMPLETE WITHDRAWAL ERROR:',
+        e
+      );
+
       return res.status(500).json({
         success: false,
+
         message:
           'Unable to complete withdrawal.'
       });
@@ -3976,22 +1960,167 @@ app.post(
   }
 );
 
-
-// =====================================================
-// ADMIN REJECT
-// =====================================================
+/* ======================================================
+   ADMIN REJECT + REFUND
+   ====================================================== */
 
 app.post(
   '/api/admin/withdrawals/:id/reject',
   admin,
   async (req, res) => {
     try {
-      const withdrawal =
-        await Withdrawal.findById(
-          req.params.id
-        );
+      const id =
+        req.params.id;
 
-      if (!withdrawal) {
+      if (
+        !mongoose.isValidObjectId(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal ID.'
+        });
+      }
+
+      const dbSession =
+        await mongoose.startSession();
+
+      let result;
+
+      try {
+        await dbSession.withTransaction(
+          async () => {
+            const w =
+              await Withdrawal.findById(
+                id
+              ).session(
+                dbSession
+              );
+
+            if (!w) {
+              result = {
+                error:
+                  'NOT_FOUND'
+              };
+
+              return;
+            }
+
+            if (
+              ![
+                'pending',
+                'processing'
+              ].includes(
+                w.status
+              )
+            ) {
+              result = {
+                error:
+                  'DONE',
+
+                status:
+                  w.status
+              };
+
+              return;
+            }
+
+            const wallet =
+              (await Wallet.findOne({
+                user_id:
+                  w.user_id
+              }).session(
+                dbSession
+              )) ||
+              new Wallet({
+                user_id:
+                  w.user_id,
+
+                balance:
+                  0
+              });
+
+            const newBalance =
+              Number(
+                wallet.balance
+              ) +
+              Number(
+                w.amount
+              );
+
+            wallet.balance =
+              newBalance;
+
+            wallet.updated_at =
+              new Date();
+
+            await wallet.save({
+              session:
+                dbSession
+            });
+
+            await WalletTransaction.create(
+              [
+                {
+                  user_id:
+                    w.user_id,
+
+                  type:
+                    'withdrawal_refund',
+
+                  amount:
+                    w.amount,
+
+                  balance_after:
+                    newBalance,
+
+                  reference_type:
+                    'withdrawal',
+
+                  reference_id:
+                    String(
+                      w._id
+                    )
+                }
+              ],
+              {
+                session:
+                  dbSession
+              }
+            );
+
+            w.status =
+              'rejected';
+
+            w.processed_at =
+              new Date();
+
+            await w.save({
+              session:
+                dbSession
+            });
+
+            result = {
+              amount:
+                Number(
+                  w.amount
+                ),
+
+              balance:
+                newBalance
+            };
+          }
+        );
+      } finally {
+        await dbSession.endSession();
+      }
+
+      if (
+        result.error ===
+        'NOT_FOUND'
+      ) {
         return res.status(404).json({
           success: false,
           message:
@@ -4000,32 +2129,41 @@ app.post(
       }
 
       if (
-        withdrawal.status ===
-          'failed' ||
-        withdrawal.status ===
-          'completed'
+        result.error ===
+        'DONE'
       ) {
-        return res.status(400).json({
+        return res.status(409).json({
           success: false,
           message:
-            'This withdrawal is already finalized by AstroPay.'
+            'Withdrawal is already ' +
+            result.status +
+            '.'
         });
       }
 
-      return res.status(400).json({
-        success: false,
-        message:
-          'Do not manually reject an active AstroPay payout. AstroPay will send status 9 if the payout fails and the server will automatically refund the wallet.'
-      });
+      return res.json({
+        success: true,
 
-    } catch (error) {
+        message:
+          'Withdrawal rejected and balance refunded.',
+
+        refundedAmount:
+          result.amount /
+          100,
+
+        newBalance:
+          result.balance /
+          100
+      });
+    } catch (e) {
       console.error(
-        'Admin reject error:',
-        error
+        'REJECT WITHDRAWAL ERROR:',
+        e
       );
 
       return res.status(500).json({
         success: false,
+
         message:
           'Unable to reject withdrawal.'
       });
@@ -4033,334 +2171,456 @@ app.post(
   }
 );
 
+/* ======================================================
+   OLD ADMIN ACTION
+   ====================================================== */
 
-// =====================================================
-// ADMIN SUMMARY
-// =====================================================
+app.post(
+  '/api/admin/withdrawals/:id/action',
+  admin,
+  async (req, res) => {
+    try {
+      const action =
+        String(
+          req.body.action ||
+            ''
+        ).toLowerCase();
+
+      const id =
+        req.params.id;
+
+      if (
+        ![
+          'reject',
+          'paid'
+        ].includes(action)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Action must be reject or paid.'
+        });
+      }
+
+      if (
+        !mongoose.isValidObjectId(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal ID.'
+        });
+      }
+
+      if (
+        action === 'paid'
+      ) {
+        const w =
+          await Withdrawal.findById(
+            id
+          );
+
+        if (!w) {
+          return res.status(404).json({
+            success: false,
+            message:
+              'Withdrawal not found.'
+          });
+        }
+
+        if (
+          w.status !==
+          'pending'
+        ) {
+          return res.status(409).json({
+            success: false,
+            message:
+              'Withdrawal is already ' +
+              w.status +
+              '.'
+          });
+        }
+
+        w.status =
+          'completed';
+
+        w.processed_at =
+          new Date();
+
+        await w.save();
+
+        return res.json({
+          success: true,
+
+          message:
+            'Withdrawal marked as completed.',
+
+          note:
+            'This endpoint does not send money. Mark paid only after the real payout has been sent.',
+
+          amount:
+            Number(w.amount) /
+            100
+        });
+      }
+
+      const dbSession =
+        await mongoose.startSession();
+
+      let result;
+
+      try {
+        await dbSession.withTransaction(
+          async () => {
+            const w =
+              await Withdrawal.findById(
+                id
+              ).session(
+                dbSession
+              );
+
+            if (!w) {
+              result = {
+                error:
+                  'NOT_FOUND'
+              };
+
+              return;
+            }
+
+            if (
+              w.status !==
+              'pending'
+            ) {
+              result = {
+                error:
+                  'DONE',
+
+                status:
+                  w.status
+              };
+
+              return;
+            }
+
+            const wallet =
+              (await Wallet.findOne({
+                user_id:
+                  w.user_id
+              }).session(
+                dbSession
+              )) ||
+              new Wallet({
+                user_id:
+                  w.user_id,
+
+                balance:
+                  0
+              });
+
+            const newBalance =
+              Number(
+                wallet.balance
+              ) +
+              Number(
+                w.amount
+              );
+
+            wallet.balance =
+              newBalance;
+
+            wallet.updated_at =
+              new Date();
+
+            await wallet.save({
+              session:
+                dbSession
+            });
+
+            await WalletTransaction.create(
+              [
+                {
+                  user_id:
+                    w.user_id,
+
+                  type:
+                    'withdrawal_refund',
+
+                  amount:
+                    w.amount,
+
+                  balance_after:
+                    newBalance,
+
+                  reference_type:
+                    'withdrawal',
+
+                  reference_id:
+                    String(
+                      w._id
+                    )
+                }
+              ],
+              {
+                session:
+                  dbSession
+              }
+            );
+
+            w.status =
+              'rejected';
+
+            w.processed_at =
+              new Date();
+
+            await w.save({
+              session:
+                dbSession
+            });
+
+            result = {
+              amount:
+                Number(
+                  w.amount
+                ),
+
+              balance:
+                newBalance
+            };
+          }
+        );
+      } finally {
+        await dbSession.endSession();
+      }
+
+      if (
+        result.error ===
+        'NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal not found.'
+        });
+      }
+
+      if (
+        result.error ===
+        'DONE'
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            'Withdrawal is already ' +
+            result.status +
+            '.'
+        });
+      }
+
+      return res.json({
+        success: true,
+
+        message:
+          'Withdrawal rejected and balance refunded.',
+
+        refundedAmount:
+          result.amount /
+          100,
+
+        newBalance:
+          result.balance /
+          100
+      });
+    } catch (e) {
+      console.error(
+        'ADMIN ACTION ERROR:',
+        e
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          'Unable to process withdrawal.'
+      });
+    }
+  }
+);
+
+/* ======================================================
+   ADMIN SUMMARY
+   ====================================================== */
 
 app.get(
   '/api/admin/summary',
   admin,
   async (req, res) => {
     try {
-      const totalUsers =
-        await User.countDocuments();
+      const [
+        totalUsers,
+        balanceAgg,
+        withdrawalsAgg,
+        pendingWithdrawals
+      ] =
+        await Promise.all([
+          User.countDocuments(),
 
-      const walletResult =
-        await Wallet.aggregate([
-          {
-            $group: {
-              _id:
-                null,
+          Wallet.aggregate([
+            {
+              $group: {
+                _id: null,
 
-              total: {
-                $sum: {
-                  $ifNull: [
-                    '$balance',
-                    0
-                  ]
+                total: {
+                  $sum:
+                    '$balance'
                 }
               }
             }
-          }
-        ]);
+          ]),
 
-      const totalBalancePaise =
-        Number(
-          walletResult[0]?.total ||
-          0
-        );
+          Withdrawal.aggregate([
+            {
+              $match: {
+                status:
+                  'completed'
+              }
+            },
 
-      const withdrawalResult =
-        await Withdrawal.aggregate([
-          {
-            $group: {
-              _id:
-                '$status',
+            {
+              $group: {
+                _id: null,
 
-              totalAmount: {
-                $sum: {
-                  $ifNull: [
-                    '$amount',
-                    0
-                  ]
+                total: {
+                  $sum:
+                    '$amount'
                 }
-              },
-
-              count: {
-                $sum:
-                  1
               }
             }
-          }
+          ]),
+
+          Withdrawal.countDocuments({
+            status: {
+              $in: [
+                'pending',
+                'processing'
+              ]
+            }
+          })
         ]);
 
-      let pending =
+      const totalBalance =
+        balanceAgg[0]?.total ||
         0;
 
-      let processing =
+      const totalWithdrawals =
+        withdrawalsAgg[0]?.total ||
         0;
-
-      let completed =
-        0;
-
-      let failed =
-        0;
-
-      let totalWithdrawnPaise =
-        0;
-
-      for (
-        const item of
-        withdrawalResult
-      ) {
-        const status =
-          String(
-            item._id || ''
-          ).toLowerCase();
-
-        const count =
-          Number(
-            item.count || 0
-          );
-
-        const amount =
-          Number(
-            item.totalAmount || 0
-          );
-
-        if (
-          status === 'pending'
-        ) {
-          pending =
-            count;
-        }
-
-        if (
-          status === 'processing'
-        ) {
-          processing =
-            count;
-        }
-
-        if (
-          status === 'completed'
-        ) {
-          completed =
-            count;
-
-          totalWithdrawnPaise +=
-            amount;
-        }
-
-        if (
-          status === 'failed'
-        ) {
-          failed =
-            count;
-        }
-      }
-
-      const paymentResult =
-        await Payment.aggregate([
-          {
-            $match: {
-              status: {
-                $in: [
-                  'paid',
-                  'captured'
-                ]
-              }
-            }
-          },
-
-          {
-            $group: {
-              _id:
-                null,
-
-              totalAmount: {
-                $sum: {
-                  $ifNull: [
-                    '$amount',
-                    0
-                  ]
-                }
-              },
-
-              count: {
-                $sum:
-                  1
-              }
-            }
-          }
-        ]);
-
-      const totalPaymentsPaise =
-        Number(
-          paymentResult[0]?.totalAmount ||
-          0
-        );
-
-      const successfulPayments =
-        Number(
-          paymentResult[0]?.count ||
-          0
-        );
 
       return res.json({
         success: true,
 
-        total_users:
-          totalUsers,
-
         totalUsers:
-          totalUsers,
+          Number(
+            totalUsers
+          ),
 
         totalBalance:
-          totalBalancePaise / 100,
+          totalBalance /
+          100,
 
-        total_balance:
-          totalBalancePaise / 100,
+        totalWithdrawals:
+          totalWithdrawals /
+          100,
 
-        totalWithdrawn:
-          totalWithdrawnPaise / 100,
-
-        total_withdrawals:
-          totalWithdrawnPaise / 100,
-
-        pending:
-          pending,
-
-        pending_withdrawals:
-          pending,
-
-        processing:
-          processing,
-
-        processing_withdrawals:
-          processing,
-
-        completed_withdrawals:
-          completed,
-
-        failed_withdrawals:
-          failed,
-
-        successful_payments:
-          successfulPayments,
+        pendingWithdrawals:
+          Number(
+            pendingWithdrawals
+          ),
 
         totalPayments:
-          totalPaymentsPaise / 100,
-
-        total_payments:
-          totalPaymentsPaise / 100
+          0
       });
-
-    } catch (error) {
+    } catch (e) {
       console.error(
-        'Admin summary error:',
-        error
+        'ADMIN SUMMARY ERROR:',
+        e
       );
 
       return res.status(500).json({
         success: false,
+
         message:
-          'Unable to load summary.'
+          'Unable to load admin summary.'
       });
     }
   }
 );
 
-
-// =====================================================
-// ADMIN TOTAL USERS
-// =====================================================
+/* ======================================================
+   ADMIN TOTAL USERS
+   ====================================================== */
 
 app.get(
   '/api/admin/total-users',
   admin,
   async (req, res) => {
     try {
-      const count =
+      const total =
         await User.countDocuments();
 
       return res.json({
         success: true,
-        total_users:
-          count
-      });
 
-    } catch (error) {
+        totalUsers:
+          Number(total)
+      });
+    } catch (e) {
+      console.error(
+        'TOTAL USERS ERROR:',
+        e
+      );
+
       return res.status(500).json({
         success: false,
+
         message:
-          'Unable to get total users.'
+          'Unable to load total users.'
       });
     }
   }
 );
 
-
-// =====================================================
-// LOGOUT
-// =====================================================
+/* ======================================================
+   LOGOUT
+   ====================================================== */
 
 app.post(
   '/api/logout',
   (req, res) => {
-    if (!req.session) {
-      return res.json({
-        success: true
-      });
-    }
-
     req.session.destroy(
-      error => {
-        if (error) {
-          console.error(
-            'Logout error:',
-            error
-          );
-
-          return res.status(500).json({
-            success: false,
-            message:
-              'Logout failed.'
-          });
-        }
-
+      () => {
         res.clearCookie(
           'truewalk.sid'
         );
 
-        return res.json({
-          success: true,
+        res.json({
           message:
-            'Logged out successfully.'
+            'Logout successful.'
         });
       }
     );
   }
 );
 
-
-// =====================================================
-// STATIC FILES
-// =====================================================
+/* ======================================================
+   STATIC FILES
+   ====================================================== */
 
 app.use(
-  express.static(
-    path.join(
-      __dirname
-    )
-  )
+  express.static(__dirname)
 );
-
-
-// =====================================================
-// ROOT
-// =====================================================
 
 app.get(
   '/',
@@ -4374,46 +2634,38 @@ app.get(
   }
 );
 
-
-// =====================================================
-// ERROR HANDLER
-// =====================================================
+/* ======================================================
+   ERROR HANDLER
+   ====================================================== */
 
 app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
+  (err, req, res, next) => {
     console.error(
-      'Unhandled server error:',
+      'UNHANDLED ERROR:',
       err
     );
 
-    if (
-      res.headersSent
-    ) {
-      return next(err);
-    }
-
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
+
       message:
         'Internal server error.'
     });
   }
 );
 
-
-// =====================================================
-// START SERVER
-// =====================================================
+/* ======================================================
+   START SERVER
+   ====================================================== */
 
 async function startServer() {
   try {
     await mongoose.connect(
-      MONGO_URI
+      MONGO_URI,
+      {
+        serverSelectionTimeoutMS:
+          10000
+      }
     );
 
     console.log(
@@ -4421,22 +2673,15 @@ async function startServer() {
     );
 
     console.log(
-      'AstroPay:',
-      ASTROPAY_MERCHANT_KEY
-        ? 'configured'
-        : 'NOT configured'
+      'Payment gateway: REMOVED'
     );
 
     console.log(
-      'Deposit callback:',
-      ASTROPAY_DEPOSIT_CALLBACK_URL ||
-        'NOT CONFIGURED'
+      'Gateway payment API: DISABLED'
     );
 
     console.log(
-      'Withdrawal callback:',
-      ASTROPAY_WITHDRAW_CALLBACK_URL ||
-        'NOT CONFIGURED'
+      'Gateway withdrawal API: DISABLED'
     );
 
     app.listen(
@@ -4445,17 +2690,12 @@ async function startServer() {
         console.log(
           `TRUE WALK server running on port ${PORT}`
         );
-
-        console.log(
-          `Local: http://localhost:${PORT}`
-        );
       }
     );
-
-  } catch (error) {
+  } catch (err) {
     console.error(
       'MongoDB connection failed:',
-      error
+      err
     );
 
     process.exit(1);
