@@ -5,7 +5,6 @@ const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const session = require('express-session');
-
 const MongoStore =
   require('connect-mongo').default || require('connect-mongo');
 
@@ -14,7 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // =====================================================
-// BASIC APP SETTINGS
+// BASIC SETTINGS
 // =====================================================
 
 app.set('trust proxy', 1);
@@ -40,6 +39,43 @@ const ADMIN_USERNAME =
 const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD || '';
 
+
+// =====================================================
+// ASTROPAY CONFIG
+// =====================================================
+
+const ASTROPAY_BASE_URL =
+  (
+    process.env.ASTROPAY_BASE_URL ||
+    'https://api.gpay.one'
+  ).replace(/\/+$/, '');
+
+const ASTROPAY_MERCHANT_KEY =
+  process.env.ASTROPAY_MERCHANT_KEY || '';
+
+const ASTROPAY_SECRET_KEY =
+  process.env.ASTROPAY_SECRET_KEY || '';
+
+const APP_URL =
+  (process.env.APP_URL || '').replace(/\/+$/, '');
+
+const ASTROPAY_DEPOSIT_CALLBACK_URL =
+  process.env.ASTROPAY_DEPOSIT_CALLBACK_URL ||
+  (
+    APP_URL
+      ? `${APP_URL}/api/payment/webhook`
+      : ''
+  );
+
+const ASTROPAY_WITHDRAW_CALLBACK_URL =
+  process.env.ASTROPAY_WITHDRAW_CALLBACK_URL ||
+  (
+    APP_URL
+      ? `${APP_URL}/api/withdrawal/webhook`
+      : ''
+  );
+
+
 // =====================================================
 // MONGODB CHECK
 // =====================================================
@@ -51,6 +87,7 @@ if (!MONGO_URI) {
 
   process.exit(1);
 }
+
 
 // =====================================================
 // USER SCHEMA
@@ -70,6 +107,13 @@ const userSchema = new mongoose.Schema(
       unique: true,
       index: true,
       trim: true
+    },
+
+    email: {
+      type: String,
+      default: null,
+      trim: true,
+      lowercase: true
     },
 
     salt: {
@@ -106,9 +150,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+
 // =====================================================
-// WALLET SCHEMA
-// Amount is stored in PAISE
+// WALLET
+// ALL AMOUNTS ARE STORED IN PAISE
 // =====================================================
 
 const walletSchema = new mongoose.Schema(
@@ -132,6 +177,7 @@ const walletSchema = new mongoose.Schema(
     }
   }
 );
+
 
 // =====================================================
 // WALLET TRANSACTION
@@ -184,6 +230,8 @@ const walletTransactionSchema =
     }
   );
 
+
+// Prevent duplicate transaction
 walletTransactionSchema.index(
   {
     reference_type: 1,
@@ -196,10 +244,9 @@ walletTransactionSchema.index(
   }
 );
 
+
 // =====================================================
-// PAYMENT SCHEMA
-// Kept only for existing / historical orders.
-// No external payment gateway is connected.
+// PAYMENT / DEPOSIT
 // =====================================================
 
 const paymentSchema =
@@ -244,6 +291,16 @@ const paymentSchema =
         default: null
       },
 
+      commission: {
+        type: Number,
+        default: 0
+      },
+
+      utr: {
+        type: String,
+        default: null
+      },
+
       status: {
         type: String,
         default: 'created',
@@ -262,8 +319,9 @@ const paymentSchema =
     }
   );
 
+
 // =====================================================
-// WITHDRAWAL SCHEMA
+// WITHDRAWAL
 // =====================================================
 
 const withdrawalSchema =
@@ -288,7 +346,7 @@ const withdrawalSchema =
 
       method: {
         type: String,
-        default: 'BANK'
+        default: 'UPI'
       },
 
       upi_id: {
@@ -311,6 +369,33 @@ const withdrawalSchema =
         default: null
       },
 
+      account_phone: {
+        type: String,
+        default: null
+      },
+
+      astropay_order_id: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+      },
+
+      astropay_utr: {
+        type: String,
+        default: null
+      },
+
+      commission: {
+        type: Number,
+        default: 0
+      },
+
+      remark: {
+        type: String,
+        default: null
+      },
+
       status: {
         type: String,
         default: 'pending',
@@ -329,17 +414,24 @@ const withdrawalSchema =
     }
   );
 
+
 // =====================================================
 // MODELS
 // =====================================================
 
 const User =
   mongoose.models.User ||
-  mongoose.model('User', userSchema);
+  mongoose.model(
+    'User',
+    userSchema
+  );
 
 const Wallet =
   mongoose.models.Wallet ||
-  mongoose.model('Wallet', walletSchema);
+  mongoose.model(
+    'Wallet',
+    walletSchema
+  );
 
 const WalletTransaction =
   mongoose.models.WalletTransaction ||
@@ -362,6 +454,7 @@ const Withdrawal =
     withdrawalSchema
   );
 
+
 // =====================================================
 // PASSWORD HELPERS
 // =====================================================
@@ -371,6 +464,7 @@ function createSalt() {
     .randomBytes(16)
     .toString('hex');
 }
+
 
 function hashPassword(
   password,
@@ -385,6 +479,7 @@ function hashPassword(
     .toString('hex');
 }
 
+
 function verifyPassword(
   password,
   salt,
@@ -396,43 +491,50 @@ function verifyPassword(
       salt
     );
 
-  const hashBuffer =
-    Buffer.from(hash, 'hex');
+  const a =
+    Buffer.from(
+      hash,
+      'hex'
+    );
 
-  const storedBuffer =
-    Buffer.from(passwordHash, 'hex');
+  const b =
+    Buffer.from(
+      passwordHash,
+      'hex'
+    );
 
-  if (
-    hashBuffer.length !==
-    storedBuffer.length
-  ) {
+  if (a.length !== b.length) {
     return false;
   }
 
   return crypto.timingSafeEqual(
-    hashBuffer,
-    storedBuffer
+    a,
+    b
   );
 }
 
+
 // =====================================================
-// RANDOM REFERENCE
+// UNIQUE ORDER ID
 // =====================================================
 
-function makeRef(prefix = 'TW') {
+function makeRef(
+  prefix = 'TW'
+) {
   return (
     prefix +
     '_' +
     Date.now() +
     '_' +
     crypto
-      .randomBytes(5)
+      .randomBytes(6)
       .toString('hex')
   );
 }
 
+
 // =====================================================
-// WALLET HELPER
+// WALLET
 // =====================================================
 
 async function ensureWallet(
@@ -442,7 +544,9 @@ async function ensureWallet(
   let wallet =
     await Wallet.findOne({
       user_id: userId
-    }).session(mongoSession);
+    }).session(
+      mongoSession
+    );
 
   if (!wallet) {
     const created =
@@ -455,7 +559,10 @@ async function ensureWallet(
           }
         ],
         mongoSession
-          ? { session: mongoSession }
+          ? {
+              session:
+                mongoSession
+            }
           : undefined
       );
 
@@ -464,6 +571,7 @@ async function ensureWallet(
 
   return wallet;
 }
+
 
 // =====================================================
 // SAFE USER
@@ -478,13 +586,17 @@ function safeUser(user) {
     id: user._id,
     name: user.name,
     phone: user.phone,
-    referral_code: user.referral_code,
-    referred_by: user.referred_by
+    email: user.email || null,
+    referral_code:
+      user.referral_code,
+    referred_by:
+      user.referred_by
   };
 }
 
+
 // =====================================================
-// LOGIN MIDDLEWARE
+// USER LOGIN MIDDLEWARE
 // =====================================================
 
 async function login(
@@ -496,7 +608,8 @@ async function login(
     if (!req.session.userId) {
       return res.status(401).json({
         success: false,
-        message: 'Login required.'
+        message:
+          'Login required.'
       });
     }
 
@@ -506,22 +619,30 @@ async function login(
       );
 
     if (!user) {
-      req.session.destroy(() => {});
+      req.session.destroy(
+        () => {}
+      );
 
       return res.status(401).json({
         success: false,
-        message: 'User account not found.'
+        message:
+          'User account not found.'
       });
     }
 
     if (user.banned === true) {
-      req.session.destroy(() => {});
+      req.session.destroy(
+        () => {}
+      );
 
       return res.status(403).json({
         success: false,
-        message: 'Your account has been banned.'
+        message:
+          'Your account has been banned.'
       });
     }
+
+    req.currentUser = user;
 
     next();
 
@@ -533,10 +654,12 @@ async function login(
 
     return res.status(500).json({
       success: false,
-      message: 'Authentication error.'
+      message:
+        'Authentication error.'
     });
   }
 }
+
 
 // =====================================================
 // ADMIN MIDDLEWARE
@@ -550,52 +673,74 @@ function admin(
   if (!req.session.isAdmin) {
     return res.status(401).json({
       success: false,
-      message: 'Admin login required.'
+      message:
+        'Admin login required.'
     });
   }
 
   next();
 }
 
+
 // =====================================================
 // SESSION
 // =====================================================
 
 const isProduction =
-  process.env.NODE_ENV === 'production';
+  process.env.NODE_ENV ===
+  'production';
 
 app.use(
   session({
-    name: 'truewalk.sid',
+    name:
+      'truewalk.sid',
 
-    secret: SESSION_SECRET,
+    secret:
+      SESSION_SECRET,
 
-    resave: false,
+    resave:
+      false,
 
-    saveUninitialized: false,
+    saveUninitialized:
+      false,
 
-    proxy: true,
+    proxy:
+      true,
 
-    store: MongoStore.create({
-      mongoUrl: MONGO_URI,
-      collectionName: 'sessions',
-      ttl: 14 * 24 * 60 * 60
-    }),
+    store:
+      MongoStore.create({
+        mongoUrl:
+          MONGO_URI,
+
+        collectionName:
+          'sessions',
+
+        ttl:
+          14 * 24 * 60 * 60
+      }),
 
     cookie: {
-      httpOnly: true,
+      httpOnly:
+        true,
 
-      secure: isProduction,
+      secure:
+        isProduction,
 
-      sameSite: isProduction
-        ? 'none'
-        : 'lax',
+      sameSite:
+        isProduction
+          ? 'none'
+          : 'lax',
 
       maxAge:
-        14 * 24 * 60 * 60 * 1000
+        14 *
+        24 *
+        60 *
+        60 *
+        1000
     }
   })
 );
+
 
 // =====================================================
 // HOME PROTECTION
@@ -616,6 +761,167 @@ app.get(
     next();
   }
 );
+
+
+// =====================================================
+// ASTROPAY API HELPER
+// =====================================================
+
+async function astroPayRequest(
+  endpoint,
+  body
+) {
+  const url =
+    `${ASTROPAY_BASE_URL}${endpoint}`;
+
+  const response =
+    await fetch(
+      url,
+      {
+        method:
+          'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json',
+
+          Accept:
+            'application/json'
+        },
+
+        body:
+          JSON.stringify({
+            merchantKey:
+              ASTROPAY_MERCHANT_KEY,
+
+            secretKey:
+              ASTROPAY_SECRET_KEY,
+
+            ...body
+          })
+      }
+    );
+
+  const text =
+    await response.text();
+
+  let result;
+
+  try {
+    result =
+      JSON.parse(text);
+  } catch {
+    throw new Error(
+      'AstroPay returned invalid JSON.'
+    );
+  }
+
+  return {
+    httpStatus:
+      response.status,
+
+    result
+  };
+}
+
+
+// =====================================================
+// ASTROPAY WEBHOOK SIGNATURE
+// =====================================================
+
+function createAstroPaySignature(
+  payload
+) {
+  const fields = {
+    orderId:
+      payload.orderId,
+
+    amount:
+      payload.amount,
+
+    commission:
+      payload.commission,
+
+    status:
+      payload.status,
+
+    utr:
+      payload.utr
+  };
+
+  const sortedKeys =
+    Object.keys(fields)
+      .sort();
+
+  const parts = [];
+
+  for (
+    const key of sortedKeys
+  ) {
+    const value =
+      fields[key];
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ''
+    ) {
+      continue;
+    }
+
+    parts.push(
+      `${key}=${value}`
+    );
+  }
+
+  const signString =
+    parts.join('&') +
+    '&secret=' +
+    ASTROPAY_SECRET_KEY;
+
+  return crypto
+    .createHash('md5')
+    .update(signString)
+    .digest('hex')
+    .toUpperCase();
+}
+
+
+function verifyAstroPayWebhook(
+  payload
+) {
+  if (
+    !payload ||
+    !payload.sign
+  ) {
+    return false;
+  }
+
+  const expected =
+    createAstroPaySignature(
+      payload
+    );
+
+  const received =
+    String(
+      payload.sign
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    expected.length !==
+    received.length
+  ) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(received)
+  );
+}
+
 
 // =====================================================
 // ADMIN LOGIN
@@ -647,8 +953,10 @@ app.post(
       }
 
       if (
-        username !== ADMIN_USERNAME ||
-        password !== ADMIN_PASSWORD
+        username !==
+          ADMIN_USERNAME ||
+        password !==
+          ADMIN_PASSWORD
       ) {
         return res.status(401).json({
           success: false,
@@ -658,13 +966,8 @@ app.post(
       }
 
       req.session.regenerate(
-        (regenerateError) => {
-          if (regenerateError) {
-            console.error(
-              'Admin session regenerate error:',
-              regenerateError
-            );
-
+        error => {
+          if (error) {
             return res.status(500).json({
               success: false,
               message:
@@ -672,17 +975,15 @@ app.post(
             });
           }
 
-          req.session.userId = null;
-          req.session.isAdmin = true;
+          req.session.userId =
+            null;
+
+          req.session.isAdmin =
+            true;
 
           req.session.save(
-            (saveError) => {
+            saveError => {
               if (saveError) {
-                console.error(
-                  'Admin session save error:',
-                  saveError
-                );
-
                 return res.status(500).json({
                   success: false,
                   message:
@@ -716,6 +1017,7 @@ app.post(
   }
 );
 
+
 // =====================================================
 // ADMIN ME
 // =====================================================
@@ -724,12 +1026,13 @@ app.get(
   '/api/admin/me',
   admin,
   (req, res) => {
-    res.json({
+    return res.json({
       success: true,
       isAdmin: true
     });
   }
 );
+
 
 // =====================================================
 // ADMIN LOGOUT
@@ -740,23 +1043,19 @@ app.post(
   (req, res) => {
     if (!req.session) {
       return res.json({
-        success: true,
-        message:
-          'Admin logged out.'
+        success: true
       });
     }
 
-    req.session.isAdmin = false;
-    req.session.userId = null;
+    req.session.isAdmin =
+      false;
+
+    req.session.userId =
+      null;
 
     req.session.save(
-      (error) => {
+      error => {
         if (error) {
-          console.error(
-            'Admin logout session error:',
-            error
-          );
-
           return res.status(500).json({
             success: false,
             message:
@@ -774,8 +1073,9 @@ app.post(
   }
 );
 
+
 // =====================================================
-// USER REGISTER
+// REGISTER
 // =====================================================
 
 app.post(
@@ -792,6 +1092,12 @@ app.post(
           req.body.phone || ''
         ).trim();
 
+      const email =
+        String(
+          req.body.email || ''
+        ).trim()
+        .toLowerCase();
+
       const password =
         String(
           req.body.password || ''
@@ -807,14 +1113,16 @@ app.post(
       if (!name) {
         return res.status(400).json({
           success: false,
-          message: 'Name is required.'
+          message:
+            'Name is required.'
         });
       }
 
       if (!phone) {
         return res.status(400).json({
           success: false,
-          message: 'Phone is required.'
+          message:
+            'Phone is required.'
         });
       }
 
@@ -852,7 +1160,7 @@ app.post(
 
       let referralCode;
 
-      for (;;) {
+      while (true) {
         referralCode =
           crypto
             .randomBytes(4)
@@ -870,7 +1178,8 @@ app.post(
         }
       }
 
-      let referredBy = null;
+      let referredBy =
+        null;
 
       if (referral) {
         const referrer =
@@ -889,6 +1198,8 @@ app.post(
         await User.create({
           name,
           phone,
+          email:
+            email || null,
           salt,
           password_hash:
             passwordHash,
@@ -896,13 +1207,19 @@ app.post(
             referralCode,
           referred_by:
             referredBy,
-          banned: false
+          banned:
+            false
         });
 
       await Wallet.create({
-        user_id: user._id,
-        balance: 0,
-        updated_at: new Date()
+        user_id:
+          user._id,
+
+        balance:
+          0,
+
+        updated_at:
+          new Date()
       });
 
       req.session.userId =
@@ -934,8 +1251,9 @@ app.post(
   }
 );
 
+
 // =====================================================
-// USER LOGIN
+// LOGIN
 // =====================================================
 
 app.post(
@@ -973,7 +1291,7 @@ app.post(
         });
       }
 
-      if (user.banned === true) {
+      if (user.banned) {
         return res.status(403).json({
           success: false,
           message:
@@ -1004,14 +1322,15 @@ app.post(
 
       return res.json({
         success: true,
-        message: 'Login successful.',
+        message:
+          'Login successful.',
         user:
           safeUser(user)
       });
 
     } catch (error) {
       console.error(
-        'User login error:',
+        'Login error:',
         error
       );
 
@@ -1024,8 +1343,9 @@ app.post(
   }
 );
 
+
 // =====================================================
-// USER ME
+// ME
 // =====================================================
 
 app.get(
@@ -1033,30 +1353,24 @@ app.get(
   login,
   async (req, res) => {
     try {
-      const user =
-        await User.findById(
-          req.session.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found.'
-        });
-      }
-
       const wallet =
         await ensureWallet(
-          user._id
+          req.currentUser._id
         );
 
       return res.json({
         success: true,
+
         user:
-          safeUser(user),
+          safeUser(
+            req.currentUser
+          ),
+
         wallet: {
           balance:
-            Number(wallet.balance || 0) / 100
+            Number(
+              wallet.balance || 0
+            ) / 100
         }
       });
 
@@ -1075,6 +1389,7 @@ app.get(
   }
 );
 
+
 // =====================================================
 // WALLET
 // =====================================================
@@ -1086,11 +1401,12 @@ app.get(
     try {
       const wallet =
         await ensureWallet(
-          req.session.userId
+          req.currentUser._id
         );
 
       return res.json({
         success: true,
+
         balance:
           Number(
             wallet.balance || 0
@@ -1117,6 +1433,7 @@ app.get(
   }
 );
 
+
 // =====================================================
 // REFERRAL
 // =====================================================
@@ -1127,21 +1444,7 @@ app.get(
   async (req, res) => {
     try {
       const user =
-        await User.findById(
-          req.session.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found.'
-        });
-      }
-
-      const appUrl =
-        (
-          process.env.APP_URL || ''
-        ).replace(/\/+$/, '');
+        req.currentUser;
 
       return res.json({
         success: true,
@@ -1150,15 +1453,10 @@ app.get(
           user.referral_code,
 
         referral_link:
-          `${appUrl}/register.html?ref=${encodeURIComponent(user.referral_code)}`
+          `${APP_URL || ''}/register.html?ref=${encodeURIComponent(user.referral_code)}`
       });
 
     } catch (error) {
-      console.error(
-        'Referral error:',
-        error
-      );
-
       return res.status(500).json({
         success: false,
         message:
@@ -1167,6 +1465,7 @@ app.get(
     }
   }
 );
+
 
 // =====================================================
 // REFERRALS
@@ -1177,22 +1476,10 @@ app.get(
   login,
   async (req, res) => {
     try {
-      const user =
-        await User.findById(
-          req.session.userId
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found.'
-        });
-      }
-
       const referrals =
         await User.find({
           referred_by:
-            user.referral_code
+            req.currentUser.referral_code
         })
         .select(
           'name phone referral_code'
@@ -1221,24 +1508,211 @@ app.get(
   }
 );
 
-// =====================================================
-// PAYMENT GATEWAY REMOVED
-// =====================================================
-//
-// RS Gateway / rspayment.shop has been completely removed.
-//
-// There is NO:
-// - RSPAY_MERCHANT_ID
-// - RSPAY_ACCESS_KEY
-// - RSPAY_API_URL
-// - RSPAY_WITHDRAW_URL
-// - RS Payment create-order
-// - RS Payment webhook
-//
-// =====================================================
 
 // =====================================================
-// PAYMENT STATUS
+// ASTROPAY - CREATE DEPOSIT
+// =====================================================
+
+app.post(
+  '/api/payment/create-order',
+  login,
+  async (req, res) => {
+    try {
+      const amount =
+        Number(
+          req.body.amount
+        );
+
+      const plan =
+        String(
+          req.body.plan || ''
+        ).trim();
+
+      const email =
+        String(
+          req.body.email ||
+          req.currentUser.email ||
+          ''
+        ).trim();
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid deposit amount.'
+        });
+      }
+
+      if (!ASTROPAY_MERCHANT_KEY) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'AstroPay merchant key is not configured.'
+        });
+      }
+
+      if (!ASTROPAY_SECRET_KEY) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'AstroPay secret key is not configured.'
+        });
+      }
+
+      if (
+        !ASTROPAY_DEPOSIT_CALLBACK_URL
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'AstroPay deposit callback URL is not configured.'
+        });
+      }
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Email is required for payment.'
+        });
+      }
+
+      const orderId =
+        makeRef('DEP');
+
+      const astro =
+        await astroPayRequest(
+          '/v1/payins/create',
+          {
+            orderId,
+
+            amount:
+              amount.toFixed(2),
+
+            callbackUrl:
+              ASTROPAY_DEPOSIT_CALLBACK_URL,
+
+            name:
+              req.currentUser.name,
+
+            phone:
+              req.currentUser.phone,
+
+            email,
+
+            channel:
+              req.body.channel ||
+              undefined
+          }
+        );
+
+      const result =
+        astro.result;
+
+      if (
+        !result ||
+        Number(result.code) !==
+          1000
+      ) {
+        return res.status(
+          astro.httpStatus >= 400
+            ? astro.httpStatus
+            : 400
+        ).json({
+          success: false,
+          message:
+            result?.msg ||
+            'AstroPay deposit creation failed.',
+          code:
+            result?.code || null
+        });
+      }
+
+      if (
+        !result.data ||
+        !result.data.pay_url
+      ) {
+        return res.status(502).json({
+          success: false,
+          message:
+            'AstroPay did not return pay_url.'
+        });
+      }
+
+      const payment =
+        await Payment.create({
+          user_id:
+            req.currentUser._id,
+
+          plan:
+            plan || null,
+
+          amount:
+            Math.round(
+              amount * 100
+            ),
+
+          currency:
+            'INR',
+
+          merchant_order_id:
+            result.data.order_id ||
+            orderId,
+
+          platform_order_id:
+            result.data.order_id ||
+            orderId,
+
+          pay_url:
+            result.data.pay_url,
+
+          status:
+            'created',
+
+          created_at:
+            new Date()
+        });
+
+      return res.json({
+        success: true,
+
+        paymentId:
+          payment._id,
+
+        orderId:
+          payment.merchant_order_id,
+
+        payUrl:
+          payment.pay_url,
+
+        amount,
+
+        currency:
+          'INR'
+      });
+
+    } catch (error) {
+      console.error(
+        'AstroPay create deposit error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message ||
+          'Unable to create deposit order.'
+      });
+    }
+  }
+);
+
+
+// =====================================================
+// ASTROPAY - QUERY DEPOSIT
 // =====================================================
 
 app.get(
@@ -1246,13 +1720,18 @@ app.get(
   login,
   async (req, res) => {
     try {
+      const orderId =
+        String(
+          req.params.orderId || ''
+        ).trim();
+
       const payment =
         await Payment.findOne({
           merchant_order_id:
-            req.params.orderId,
+            orderId,
 
           user_id:
-            req.session.userId
+            req.currentUser._id
         });
 
       if (!payment) {
@@ -1263,25 +1742,69 @@ app.get(
         });
       }
 
+      const astro =
+        await astroPayRequest(
+          '/v1/payins/query',
+          {
+            orderId
+          }
+        );
+
+      const result =
+        astro.result;
+
+      if (
+        !result ||
+        Number(result.code) !==
+          1000
+      ) {
+        return res.status(
+          astro.httpStatus >= 400
+            ? astro.httpStatus
+            : 400
+        ).json({
+          success: false,
+          message:
+            result?.msg ||
+            'Unable to query AstroPay payment.'
+        });
+      }
+
+      const data =
+        result.data || {};
+
       return res.json({
         success: true,
 
         status:
-          payment.status,
+          Number(data.status),
 
         orderId:
-          payment.merchant_order_id,
+          data.orderId,
 
         amount:
-          payment.amount / 100,
+          Number(
+            data.amount || 0
+          ),
 
-        paid_at:
-          payment.paid_at
+        commission:
+          Number(
+            data.commission || 0
+          ),
+
+        utr:
+          data.utr || null,
+
+        created_at:
+          data.createTime || null,
+
+        updated_at:
+          data.updateTime || null
       });
 
     } catch (error) {
       console.error(
-        'Payment status error:',
+        'AstroPay deposit query error:',
         error
       );
 
@@ -1293,6 +1816,311 @@ app.get(
     }
   }
 );
+
+
+// =====================================================
+// ASTROPAY - DEPOSIT WEBHOOK
+// =====================================================
+
+app.post(
+  '/api/payment/webhook',
+  async (req, res) => {
+    try {
+      const payload =
+        req.body || {};
+
+      console.log(
+        'ASTROPAY DEPOSIT WEBHOOK:',
+        payload
+      );
+
+      if (
+        !verifyAstroPayWebhook(
+          payload
+        )
+      ) {
+        console.error(
+          'Invalid AstroPay deposit signature.'
+        );
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid signature.'
+        });
+      }
+
+      const orderId =
+        String(
+          payload.orderId || ''
+        ).trim();
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Missing orderId.'
+        });
+      }
+
+      const status =
+        Number(
+          payload.status
+        );
+
+      if (
+        status !== 9 &&
+        status !== 10
+      ) {
+        return res.status(200).json({
+          success: true,
+          message:
+            'Pending status ignored.'
+        });
+      }
+
+      const payment =
+        await Payment.findOne({
+          merchant_order_id:
+            orderId
+        });
+
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Payment order not found.'
+        });
+      }
+
+      // Already processed
+      if (
+        (
+          status === 10 &&
+          (
+            payment.status ===
+              'paid' ||
+            payment.status ===
+              'captured'
+          )
+        ) ||
+        (
+          status === 9 &&
+          payment.status ===
+            'failed'
+        )
+      ) {
+        return res.status(200).json({
+          success: true,
+          message:
+            'Already processed.'
+        });
+      }
+
+      const webhookAmount =
+        Number(
+          payload.amount
+        );
+
+      const expectedAmount =
+        Number(
+          payment.amount
+        ) / 100;
+
+      if (
+        !Number.isFinite(
+          webhookAmount
+        ) ||
+        Math.abs(
+          webhookAmount -
+          expectedAmount
+        ) > 0.01
+      ) {
+        console.error(
+          'AstroPay deposit amount mismatch.',
+          {
+            orderId,
+            webhookAmount,
+            expectedAmount
+          }
+        );
+
+        return res.status(400).json({
+          success: false,
+          message:
+            'Amount mismatch.'
+        });
+      }
+
+      // FAILED
+      if (status === 9) {
+        payment.status =
+          'failed';
+
+        payment.commission =
+          Math.round(
+            Number(
+              payload.commission || 0
+            ) * 100
+          );
+
+        payment.utr =
+          payload.utr ||
+          null;
+
+        await payment.save();
+
+        return res.status(200).json({
+          success: true,
+          message:
+            'Failed payment recorded.'
+        });
+      }
+
+      // SUCCESS
+      const mongoSession =
+        await mongoose.startSession();
+
+      try {
+        await mongoSession.withTransaction(
+          async () => {
+            const freshPayment =
+              await Payment.findOne({
+                merchant_order_id:
+                  orderId
+              }).session(
+                mongoSession
+              );
+
+            if (!freshPayment) {
+              throw new Error(
+                'Payment not found.'
+              );
+            }
+
+            if (
+              freshPayment.status ===
+                'paid' ||
+              freshPayment.status ===
+                'captured'
+            ) {
+              return;
+            }
+
+            const wallet =
+              await ensureWallet(
+                freshPayment.user_id,
+                mongoSession
+              );
+
+            const oldBalance =
+              Number(
+                wallet.balance || 0
+              );
+
+            const creditAmount =
+              Number(
+                freshPayment.amount
+              );
+
+            const newBalance =
+              oldBalance +
+              creditAmount;
+
+            wallet.balance =
+              newBalance;
+
+            wallet.updated_at =
+              new Date();
+
+            await wallet.save({
+              session:
+                mongoSession
+            });
+
+            await WalletTransaction.create(
+              [
+                {
+                  user_id:
+                    freshPayment.user_id,
+
+                  type:
+                    'credit',
+
+                  amount:
+                    creditAmount,
+
+                  balance_after:
+                    newBalance,
+
+                  reference_type:
+                    'payment',
+
+                  reference_id:
+                    String(
+                      freshPayment._id
+                    ),
+
+                  created_at:
+                    new Date()
+                }
+              ],
+              {
+                session:
+                  mongoSession
+              }
+            );
+
+            freshPayment.status =
+              'paid';
+
+            freshPayment.commission =
+              Math.round(
+                Number(
+                  payload.commission ||
+                    0
+                ) * 100
+              );
+
+            freshPayment.utr =
+              payload.utr ||
+              null;
+
+            freshPayment.paid_at =
+              new Date();
+
+            await freshPayment.save({
+              session:
+                mongoSession
+            });
+          }
+        );
+
+      } finally {
+        await mongoSession.endSession();
+      }
+
+      return res.status(200).json({
+        success: true,
+        message:
+          'Deposit processed successfully.'
+      });
+
+    } catch (error) {
+      console.error(
+        'AstroPay deposit webhook error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Webhook processing failed.'
+      });
+    }
+  }
+);
+
 
 // =====================================================
 // ORDERS
@@ -1306,7 +2134,7 @@ app.get(
       const payments =
         await Payment.find({
           user_id:
-            req.session.userId
+            req.currentUser._id
         })
         .sort({
           created_at: -1
@@ -1339,6 +2167,17 @@ app.get(
             status:
               payment.status,
 
+            pay_url:
+              payment.pay_url,
+
+            commission:
+              Number(
+                payment.commission || 0
+              ) / 100,
+
+            utr:
+              payment.utr,
+
             created_at:
               payment.created_at,
 
@@ -1367,20 +2206,17 @@ app.get(
   }
 );
 
+
 // =====================================================
-// WITHDRAWAL REQUEST
+// CREATE ASTROPAY WITHDRAWAL
 // =====================================================
 
 app.post(
   '/api/withdrawals',
   login,
   async (req, res) => {
-    console.log(
-      'WITHDRAWAL REQUEST:',
-      req.body
-    );
-
-    let mongoSession = null;
+    let mongoSession =
+      null;
 
     try {
       const amount =
@@ -1392,7 +2228,7 @@ app.post(
         String(
           req.body.method ||
           req.body.withdrawalMethod ||
-          'BANK'
+          'UPI'
         )
         .trim()
         .toUpperCase();
@@ -1401,6 +2237,7 @@ app.post(
         String(
           req.body.upi_id ||
           req.body.upiId ||
+          req.body.account ||
           ''
         ).trim();
 
@@ -1408,6 +2245,7 @@ app.post(
         String(
           req.body.account_name ||
           req.body.accountName ||
+          req.body.personName ||
           ''
         ).trim();
 
@@ -1418,11 +2256,11 @@ app.post(
           ''
         ).trim();
 
-      const confirmAccountNumber =
+      const accountPhone =
         String(
-          req.body.confirm_account_number ||
-          req.body.confirmAccountNumber ||
-          req.body.confirm_account ||
+          req.body.account_phone ||
+          req.body.accountPhone ||
+          req.currentUser.phone ||
           ''
         ).trim();
 
@@ -1430,14 +2268,11 @@ app.post(
         String(
           req.body.ifsc ||
           req.body.IFSC ||
+          req.body.bank_code ||
           ''
         )
         .trim()
         .toUpperCase();
-
-      // -------------------------------------------------
-      // AMOUNT
-      // -------------------------------------------------
 
       if (
         !Number.isFinite(amount) ||
@@ -1458,24 +2293,26 @@ app.post(
         });
       }
 
-      const amountPaise =
-        Math.round(
-          amount * 100
-        );
-
       if (
-        amountPaise <= 0
+        !ASTROPAY_MERCHANT_KEY ||
+        !ASTROPAY_SECRET_KEY
       ) {
-        return res.status(400).json({
+        return res.status(500).json({
           success: false,
           message:
-            'Invalid withdrawal amount.'
+            'AstroPay credentials are not configured.'
         });
       }
 
-      // -------------------------------------------------
-      // METHOD
-      // -------------------------------------------------
+      if (
+        !ASTROPAY_WITHDRAW_CALLBACK_URL
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            'AstroPay withdrawal callback URL is not configured.'
+        });
+      }
 
       if (
         !['UPI', 'BANK'].includes(
@@ -1485,12 +2322,12 @@ app.post(
         return res.status(400).json({
           success: false,
           message:
-            'Invalid withdrawal method.'
+            'Only UPI and BANK withdrawals are supported.'
         });
       }
 
       // -------------------------------------------------
-      // UPI
+      // UPI VALIDATION
       // -------------------------------------------------
 
       if (
@@ -1517,7 +2354,7 @@ app.post(
       }
 
       // -------------------------------------------------
-      // BANK
+      // BANK VALIDATION
       // -------------------------------------------------
 
       if (
@@ -1543,244 +2380,32 @@ app.post(
           return res.status(400).json({
             success: false,
             message:
-              'IFSC code is required.'
-          });
-        }
-
-        if (
-          confirmAccountNumber &&
-          accountNumber !==
-            confirmAccountNumber
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              'Bank account numbers do not match.'
-          });
-        }
-
-        if (
-          !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
-            ifsc
-          )
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              'Invalid IFSC code.'
+              'IFSC / bank code is required.'
           });
         }
       }
 
+      const amountPaise =
+        Math.round(
+          amount * 100
+        );
+
       // -------------------------------------------------
-      // START TRANSACTION
+      // CHECK WALLET FIRST
       // -------------------------------------------------
 
-      mongoSession =
-        await mongoose.startSession();
+      const wallet =
+        await ensureWallet(
+          req.currentUser._id
+        );
 
-      let withdrawal = null;
-
-      await mongoSession.withTransaction(
-        async () => {
-
-          const wallet =
-            await ensureWallet(
-              req.session.userId,
-              mongoSession
-            );
-
-          const balance =
-            Number(
-              wallet.balance || 0
-            );
-
-          console.log(
-            'WITHDRAWAL BALANCE:',
-            {
-              balance_paise:
-                balance,
-
-              balance_rupees:
-                balance / 100,
-
-              requested_paise:
-                amountPaise,
-
-              requested_rupees:
-                amount
-            }
-          );
-
-          // -------------------------------------------------
-          // BALANCE CHECK
-          // -------------------------------------------------
-
-          if (
-            balance <
-            amountPaise
-          ) {
-            throw new Error(
-              'Insufficient wallet balance.'
-            );
-          }
-
-          const newBalance =
-            balance -
-            amountPaise;
-
-          // -------------------------------------------------
-          // DEDUCT BALANCE
-          // -------------------------------------------------
-
-          wallet.balance =
-            newBalance;
-
-          wallet.updated_at =
-            new Date();
-
-          await wallet.save({
-            session:
-              mongoSession
-          });
-
-          // -------------------------------------------------
-          // CREATE WITHDRAWAL
-          // -------------------------------------------------
-
-          const created =
-            await Withdrawal.create(
-              [
-                {
-                  user_id:
-                    req.session.userId,
-
-                  amount:
-                    amountPaise,
-
-                  currency:
-                    'INR',
-
-                  method:
-                    method,
-
-                  upi_id:
-                    method === 'UPI'
-                      ? upiId
-                      : null,
-
-                  account_name:
-                    method === 'BANK'
-                      ? accountName
-                      : null,
-
-                  account_last4:
-                    method === 'BANK'
-                      ? accountNumber.slice(-4)
-                      : null,
-
-                  ifsc:
-                    method === 'BANK'
-                      ? ifsc
-                      : null,
-
-                  status:
-                    'pending',
-
-                  created_at:
-                    new Date()
-                }
-              ],
-              {
-                session:
-                  mongoSession
-              }
-            );
-
-          withdrawal =
-            created[0];
-
-          // -------------------------------------------------
-          // WALLET DEBIT
-          // -------------------------------------------------
-
-          await WalletTransaction.create(
-            [
-              {
-                user_id:
-                  req.session.userId,
-
-                type:
-                  'debit',
-
-                amount:
-                  amountPaise,
-
-                balance_after:
-                  newBalance,
-
-                reference_type:
-                  'withdrawal',
-
-                reference_id:
-                  String(
-                    withdrawal._id
-                  ),
-
-                created_at:
-                  new Date()
-              }
-            ],
-            {
-              session:
-                mongoSession
-            }
-          );
-        }
-      );
-
-      console.log(
-        'WITHDRAWAL SUCCESS:',
-        {
-          id:
-            withdrawal._id,
-
-          amount,
-
-          method
-        }
-      );
-
-      return res.status(200).json({
-        success: true,
-
-        message:
-          'Withdrawal request submitted successfully.',
-
-        withdrawal: {
-          id:
-            withdrawal._id,
-
-          amount,
-
-          status:
-            withdrawal.status,
-
-          method
-        }
-      });
-
-    } catch (error) {
-
-      console.error(
-        'WITHDRAWAL ERROR:',
-        error
-      );
+      const balance =
+        Number(
+          wallet.balance || 0
+        );
 
       if (
-        error &&
-        error.message ===
-          'Insufficient wallet balance.'
+        balance < amountPaise
       ) {
         return res.status(400).json({
           success: false,
@@ -1789,25 +2414,354 @@ app.post(
         });
       }
 
+      // -------------------------------------------------
+      // CREATE ASTROPAY ORDER ID
+      // -------------------------------------------------
+
+      const orderId =
+        makeRef('WDR');
+
+      // -------------------------------------------------
+      // ASTROPAY PAYOUT REQUEST
+      // -------------------------------------------------
+
+      const payoutBody = {
+        orderId,
+
+        amount:
+          amount.toFixed(2),
+
+        callbackUrl:
+          ASTROPAY_WITHDRAW_CALLBACK_URL,
+
+        accountType:
+          method === 'UPI'
+            ? 'UPI'
+            : 'BANK',
+
+        account:
+          method === 'UPI'
+            ? upiId
+            : accountNumber,
+
+        bank_code:
+          method === 'BANK'
+            ? ifsc
+            : '',
+
+        accountPhone,
+
+        personName:
+          method === 'BANK'
+            ? accountName
+            : (
+                accountName ||
+                req.currentUser.name
+              )
+      };
+
+      const astro =
+        await astroPayRequest(
+          '/v1/payouts/create',
+          payoutBody
+        );
+
+      const result =
+        astro.result;
+
       if (
-        error &&
-        (
-          error.codeName ===
-            'TransactionNotSupported' ||
-          error.code === 20 ||
-          String(
-            error.message || ''
-          ).toLowerCase().includes(
-            'transaction numbers are only allowed'
-          )
-        )
+        !result ||
+        Number(result.code) !==
+          1000
       ) {
-        return res.status(500).json({
+        return res.status(
+          astro.httpStatus >= 400
+            ? astro.httpStatus
+            : 400
+        ).json({
           success: false,
           message:
-            'Withdrawal database transaction is not supported by the current MongoDB connection.'
+            result?.msg ||
+            'AstroPay withdrawal creation failed.',
+          code:
+            result?.code || null
         });
       }
+
+      const data =
+        result.data || {};
+
+      // -------------------------------------------------
+      // NOW DEDUCT USER WALLET
+      // -------------------------------------------------
+
+      mongoSession =
+        await mongoose.startSession();
+
+      let withdrawal;
+
+      try {
+        await mongoSession.withTransaction(
+          async () => {
+            const freshWallet =
+              await ensureWallet(
+                req.currentUser._id,
+                mongoSession
+              );
+
+            const currentBalance =
+              Number(
+                freshWallet.balance || 0
+              );
+
+            if (
+              currentBalance <
+              amountPaise
+            ) {
+              throw new Error(
+                'Insufficient wallet balance.'
+              );
+            }
+
+            const newBalance =
+              currentBalance -
+              amountPaise;
+
+            freshWallet.balance =
+              newBalance;
+
+            freshWallet.updated_at =
+              new Date();
+
+            await freshWallet.save({
+              session:
+                mongoSession
+            });
+
+            const created =
+              await Withdrawal.create(
+                [
+                  {
+                    user_id:
+                      req.currentUser._id,
+
+                    amount:
+                      amountPaise,
+
+                    currency:
+                      'INR',
+
+                    method:
+                      method,
+
+                    upi_id:
+                      method === 'UPI'
+                        ? upiId
+                        : null,
+
+                    account_name:
+                      method === 'BANK'
+                        ? accountName
+                        : (
+                            accountName ||
+                            null
+                          ),
+
+                    account_last4:
+                      method === 'BANK'
+                        ? accountNumber.slice(-4)
+                        : null,
+
+                    ifsc:
+                      method === 'BANK'
+                        ? ifsc
+                        : null,
+
+                    account_phone:
+                      accountPhone,
+
+                    astropay_order_id:
+                      data.orderId ||
+                      orderId,
+
+                    astropay_utr:
+                      data.utr ||
+                      null,
+
+                    commission:
+                      Math.round(
+                        Number(
+                          data.commission ||
+                            0
+                        ) * 100
+                      ),
+
+                    remark:
+                      null,
+
+                    status:
+                      Number(
+                        data.status
+                      ) === 10
+                        ? 'completed'
+                        : Number(
+                            data.status
+                          ) === 9
+                          ? 'failed'
+                          : 'processing',
+
+                    created_at:
+                      new Date(),
+
+                    processed_at:
+                      Number(
+                        data.status
+                      ) === 10 ||
+                      Number(
+                        data.status
+                      ) === 9
+                        ? new Date()
+                        : null
+                  }
+                ],
+                {
+                  session:
+                    mongoSession
+                }
+              );
+
+            withdrawal =
+              created[0];
+
+            // If AstroPay immediately says FAILED,
+            // refund the user's wallet.
+            if (
+              Number(
+                data.status
+              ) === 9
+            ) {
+              freshWallet.balance =
+                currentBalance;
+
+              freshWallet.updated_at =
+                new Date();
+
+              await freshWallet.save({
+                session:
+                  mongoSession
+              });
+
+              await WalletTransaction.create(
+                [
+                  {
+                    user_id:
+                      req.currentUser._id,
+
+                    type:
+                      'refund',
+
+                    amount:
+                      amountPaise,
+
+                    balance_after:
+                      currentBalance,
+
+                    reference_type:
+                      'withdrawal_refund',
+
+                    reference_id:
+                      String(
+                        withdrawal._id
+                      ),
+
+                    created_at:
+                      new Date()
+                  }
+                ],
+                {
+                  session:
+                    mongoSession
+                }
+              );
+            } else {
+              await WalletTransaction.create(
+                [
+                  {
+                    user_id:
+                      req.currentUser._id,
+
+                    type:
+                      'debit',
+
+                    amount:
+                      amountPaise,
+
+                    balance_after:
+                      newBalance,
+
+                    reference_type:
+                      'withdrawal',
+
+                    reference_id:
+                      String(
+                        withdrawal._id
+                      ),
+
+                    created_at:
+                      new Date()
+                  }
+                ],
+                {
+                  session:
+                    mongoSession
+                }
+              );
+            }
+          }
+        );
+
+      } finally {
+        await mongoSession.endSession();
+      }
+
+      return res.json({
+        success: true,
+
+        message:
+          Number(data.status) === 9
+            ? 'Withdrawal failed and amount was refunded.'
+            : 'Withdrawal request submitted successfully.',
+
+        withdrawal: {
+          id:
+            withdrawal._id,
+
+          orderId:
+            withdrawal.astropay_order_id,
+
+          amount,
+
+          status:
+            withdrawal.status,
+
+          method,
+
+          commission:
+            Number(
+              data.commission || 0
+            ),
+
+          utr:
+            data.utr ||
+            null
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        'AstroPay withdrawal error:',
+        error
+      );
 
       return res.status(500).json({
         success: false,
@@ -1820,16 +2774,328 @@ app.post(
       if (mongoSession) {
         try {
           await mongoSession.endSession();
-        } catch (sessionError) {
-          console.error(
-            'Withdrawal session close error:',
-            sessionError
-          );
-        }
+        } catch {}
       }
     }
   }
 );
+
+
+// =====================================================
+// ASTROPAY WITHDRAWAL WEBHOOK
+// =====================================================
+
+app.post(
+  '/api/withdrawal/webhook',
+  async (req, res) => {
+    try {
+      const payload =
+        req.body || {};
+
+      console.log(
+        'ASTROPAY WITHDRAWAL WEBHOOK:',
+        payload
+      );
+
+      if (
+        !verifyAstroPayWebhook(
+          payload
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid signature.'
+        });
+      }
+
+      const orderId =
+        String(
+          payload.orderId || ''
+        ).trim();
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Missing orderId.'
+        });
+      }
+
+      const status =
+        Number(
+          payload.status
+        );
+
+      if (
+        status !== 9 &&
+        status !== 10
+      ) {
+        return res.status(200).json({
+          success: true,
+          message:
+            'Pending status ignored.'
+        });
+      }
+
+      const withdrawal =
+        await Withdrawal.findOne({
+          astropay_order_id:
+            orderId
+        });
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal order not found.'
+        });
+      }
+
+      // -------------------------------------------------
+      // ALREADY FINAL
+      // -------------------------------------------------
+
+      if (
+        status === 10 &&
+        withdrawal.status ===
+          'completed'
+      ) {
+        return res.status(200).json({
+          success: true,
+          message:
+            'Withdrawal already completed.'
+        });
+      }
+
+      if (
+        status === 9 &&
+        withdrawal.status ===
+          'failed'
+      ) {
+        return res.status(200).json({
+          success: true,
+          message:
+            'Withdrawal already failed.'
+        });
+      }
+
+      // -------------------------------------------------
+      // AMOUNT CHECK
+      // -------------------------------------------------
+
+      const webhookAmount =
+        Number(
+          payload.amount
+        );
+
+      const expectedAmount =
+        Number(
+          withdrawal.amount
+        ) / 100;
+
+      if (
+        !Number.isFinite(
+          webhookAmount
+        ) ||
+        Math.abs(
+          webhookAmount -
+          expectedAmount
+        ) > 0.01
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Withdrawal amount mismatch.'
+        });
+      }
+
+      // -------------------------------------------------
+      // SUCCESS
+      // -------------------------------------------------
+
+      if (status === 10) {
+        withdrawal.status =
+          'completed';
+
+        withdrawal.astropay_utr =
+          payload.utr ||
+          null;
+
+        withdrawal.commission =
+          Math.round(
+            Number(
+              payload.commission || 0
+            ) * 100
+          );
+
+        withdrawal.remark =
+          payload.remark ||
+          null;
+
+        withdrawal.processed_at =
+          new Date();
+
+        await withdrawal.save();
+
+        return res.status(200).json({
+          success: true,
+          message:
+            'Withdrawal completed.'
+        });
+      }
+
+      // -------------------------------------------------
+      // FAILED
+      // -------------------------------------------------
+
+      if (status === 9) {
+        const mongoSession =
+          await mongoose.startSession();
+
+        try {
+          await mongoSession.withTransaction(
+            async () => {
+              const freshWithdrawal =
+                await Withdrawal.findOne({
+                  astropay_order_id:
+                    orderId
+                }).session(
+                  mongoSession
+                );
+
+              if (!freshWithdrawal) {
+                throw new Error(
+                  'Withdrawal not found.'
+                );
+              }
+
+              if (
+                freshWithdrawal.status ===
+                  'failed'
+              ) {
+                return;
+              }
+
+              const wallet =
+                await ensureWallet(
+                  freshWithdrawal.user_id,
+                  mongoSession
+                );
+
+              const oldBalance =
+                Number(
+                  wallet.balance || 0
+                );
+
+              const refundAmount =
+                Number(
+                  freshWithdrawal.amount
+                );
+
+              const newBalance =
+                oldBalance +
+                refundAmount;
+
+              wallet.balance =
+                newBalance;
+
+              wallet.updated_at =
+                new Date();
+
+              await wallet.save({
+                session:
+                  mongoSession
+              });
+
+              await WalletTransaction.create(
+                [
+                  {
+                    user_id:
+                      freshWithdrawal.user_id,
+
+                    type:
+                      'refund',
+
+                    amount:
+                      refundAmount,
+
+                    balance_after:
+                      newBalance,
+
+                    reference_type:
+                      'withdrawal_refund',
+
+                    reference_id:
+                      String(
+                        freshWithdrawal._id
+                      ),
+
+                    created_at:
+                      new Date()
+                  }
+                ],
+                {
+                  session:
+                    mongoSession
+                }
+              );
+
+              freshWithdrawal.status =
+                'failed';
+
+              freshWithdrawal.astropay_utr =
+                payload.utr ||
+                null;
+
+              freshWithdrawal.commission =
+                Math.round(
+                  Number(
+                    payload.commission ||
+                      0
+                  ) * 100
+                );
+
+              freshWithdrawal.remark =
+                payload.remark ||
+                null;
+
+              freshWithdrawal.processed_at =
+                new Date();
+
+              await freshWithdrawal.save({
+                session:
+                  mongoSession
+              });
+            }
+          );
+
+        } finally {
+          await mongoSession.endSession();
+        }
+
+        return res.status(200).json({
+          success: true,
+          message:
+            'Withdrawal failed and amount refunded.'
+        });
+      }
+
+    } catch (error) {
+      console.error(
+        'AstroPay withdrawal webhook error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Withdrawal webhook failed.'
+      });
+    }
+  }
+);
+
 
 // =====================================================
 // USER WITHDRAWAL HISTORY
@@ -1843,7 +3109,7 @@ app.get(
       const withdrawals =
         await Withdrawal.find({
           user_id:
-            req.session.userId
+            req.currentUser._id
         })
         .sort({
           created_at: -1
@@ -1882,6 +3148,23 @@ app.get(
               ifsc:
                 item.ifsc,
 
+              account_phone:
+                item.account_phone,
+
+              astropay_order_id:
+                item.astropay_order_id,
+
+              utr:
+                item.astropay_utr,
+
+              commission:
+                Number(
+                  item.commission || 0
+                ) / 100,
+
+              remark:
+                item.remark,
+
               status:
                 item.status,
 
@@ -1909,6 +3192,116 @@ app.get(
   }
 );
 
+
+// =====================================================
+// ASTROPAY WITHDRAWAL QUERY
+// =====================================================
+
+app.get(
+  '/api/withdrawals/status/:orderId',
+  login,
+  async (req, res) => {
+    try {
+      const orderId =
+        String(
+          req.params.orderId || ''
+        ).trim();
+
+      const withdrawal =
+        await Withdrawal.findOne({
+          astropay_order_id:
+            orderId,
+
+          user_id:
+            req.currentUser._id
+        });
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal not found.'
+        });
+      }
+
+      const astro =
+        await astroPayRequest(
+          '/v1/payouts/query',
+          {
+            orderId
+          }
+        );
+
+      const result =
+        astro.result;
+
+      if (
+        !result ||
+        Number(result.code) !==
+          1000
+      ) {
+        return res.status(
+          astro.httpStatus >= 400
+            ? astro.httpStatus
+            : 400
+        ).json({
+          success: false,
+          message:
+            result?.msg ||
+            'Unable to query AstroPay withdrawal.'
+        });
+      }
+
+      const data =
+        result.data || {};
+
+      const status =
+        Number(
+          data.status
+        );
+
+      return res.json({
+        success: true,
+
+        orderId:
+          data.orderId,
+
+        amount:
+          Number(
+            data.amount || 0
+          ),
+
+        status,
+
+        utr:
+          data.utr ||
+          null,
+
+        created_at:
+          data.createTime ||
+          null,
+
+        updated_at:
+          data.updateTime ||
+          null
+      });
+
+    } catch (error) {
+      console.error(
+        'Withdrawal query error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to check withdrawal status.'
+      });
+    }
+  }
+);
+
+
 // =====================================================
 // ADMIN USERS
 // =====================================================
@@ -1921,7 +3314,7 @@ app.get(
       const users =
         await User.find()
           .select(
-            'name phone referral_code referred_by banned'
+            'name phone email referral_code referred_by banned'
           )
           .sort({
             _id: -1
@@ -1930,7 +3323,9 @@ app.get(
 
       const result = [];
 
-      for (const user of users) {
+      for (
+        const user of users
+      ) {
         const wallet =
           await Wallet.findOne({
             user_id:
@@ -1946,6 +3341,9 @@ app.get(
 
           phone:
             user.phone,
+
+          email:
+            user.email,
 
           referral_code:
             user.referral_code,
@@ -1984,8 +3382,9 @@ app.get(
   }
 );
 
+
 // =====================================================
-// ADMIN BAN USER
+// ADMIN BAN
 // =====================================================
 
 app.post(
@@ -1993,12 +3392,9 @@ app.post(
   admin,
   async (req, res) => {
     try {
-      const userId =
-        req.params.userId;
-
       if (
         !mongoose.isValidObjectId(
-          userId
+          req.params.userId
         )
       ) {
         return res.status(400).json({
@@ -2010,7 +3406,7 @@ app.post(
 
       const user =
         await User.findById(
-          userId
+          req.params.userId
         );
 
       if (!user) {
@@ -2021,15 +3417,8 @@ app.post(
         });
       }
 
-      if (user.banned === true) {
-        return res.json({
-          success: true,
-          message:
-            'User is already banned.'
-        });
-      }
-
-      user.banned = true;
+      user.banned =
+        true;
 
       await user.save();
 
@@ -2041,7 +3430,7 @@ app.post(
 
     } catch (error) {
       console.error(
-        'Admin ban user error:',
+        'Ban user error:',
         error
       );
 
@@ -2054,8 +3443,9 @@ app.post(
   }
 );
 
+
 // =====================================================
-// ADMIN UNBAN USER
+// ADMIN UNBAN
 // =====================================================
 
 app.post(
@@ -2063,12 +3453,9 @@ app.post(
   admin,
   async (req, res) => {
     try {
-      const userId =
-        req.params.userId;
-
       if (
         !mongoose.isValidObjectId(
-          userId
+          req.params.userId
         )
       ) {
         return res.status(400).json({
@@ -2080,7 +3467,7 @@ app.post(
 
       const user =
         await User.findById(
-          userId
+          req.params.userId
         );
 
       if (!user) {
@@ -2091,15 +3478,8 @@ app.post(
         });
       }
 
-      if (user.banned !== true) {
-        return res.json({
-          success: true,
-          message:
-            'User is already active.'
-        });
-      }
-
-      user.banned = false;
+      user.banned =
+        false;
 
       await user.save();
 
@@ -2111,7 +3491,7 @@ app.post(
 
     } catch (error) {
       console.error(
-        'Admin unban user error:',
+        'Unban user error:',
         error
       );
 
@@ -2124,6 +3504,7 @@ app.post(
   }
 );
 
+
 // =====================================================
 // ADMIN LOGIN AS USER
 // =====================================================
@@ -2133,24 +3514,9 @@ app.post(
   admin,
   async (req, res) => {
     try {
-      const userId =
-        req.params.userId;
-
-      if (
-        !mongoose.isValidObjectId(
-          userId
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid user ID.'
-        });
-      }
-
       const user =
         await User.findById(
-          userId
+          req.params.userId
         );
 
       if (!user) {
@@ -2161,26 +3527,21 @@ app.post(
         });
       }
 
-      if (user.banned === true) {
+      if (user.banned) {
         return res.status(403).json({
           success: false,
           message:
-            'This user is banned. Unban the user first.'
+            'This user is banned.'
         });
       }
 
       req.session.regenerate(
-        (regenerateError) => {
-          if (regenerateError) {
-            console.error(
-              'Login-as session regenerate error:',
-              regenerateError
-            );
-
+        error => {
+          if (error) {
             return res.status(500).json({
               success: false,
               message:
-                'Unable to create user session.'
+                'Unable to create session.'
             });
           }
 
@@ -2191,26 +3552,19 @@ app.post(
             false;
 
           req.session.save(
-            (saveError) => {
+            saveError => {
               if (saveError) {
-                console.error(
-                  'Login-as session save error:',
-                  saveError
-                );
-
                 return res.status(500).json({
                   success: false,
                   message:
-                    'Unable to save user session.'
+                    'Unable to save session.'
                 });
               }
 
               return res.json({
                 success: true,
-
                 message:
                   'Logged in as user successfully.',
-
                 user:
                   safeUser(user)
               });
@@ -2221,7 +3575,7 @@ app.post(
 
     } catch (error) {
       console.error(
-        'Admin login-as-user error:',
+        'Login as user error:',
         error
       );
 
@@ -2234,6 +3588,7 @@ app.post(
   }
 );
 
+
 // =====================================================
 // ADMIN BALANCE ADJUSTMENT
 // =====================================================
@@ -2242,12 +3597,14 @@ app.post(
   '/api/admin/users/:userId/balance',
   admin,
   async (req, res) => {
-    try {
-      const userId =
-        req.params.userId;
+    let mongoSession =
+      null;
 
+    try {
       const amount =
-        Number(req.body.amount);
+        Number(
+          req.body.amount
+        );
 
       const type =
         String(
@@ -2284,34 +3641,23 @@ app.post(
         });
       }
 
-      if (
-        !mongoose.isValidObjectId(
-          userId
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Invalid user ID.'
-        });
-      }
-
       const amountPaise =
         Math.round(
           amount * 100
         );
 
-      const mongoSession =
+      mongoSession =
         await mongoose.startSession();
 
-      let newBalance = 0;
+      let newBalance =
+        0;
 
       try {
         await mongoSession.withTransaction(
           async () => {
             const user =
               await User.findById(
-                userId
+                req.params.userId
               ).session(
                 mongoSession
               );
@@ -2336,24 +3682,19 @@ app.post(
             if (
               type === 'debit' &&
               oldBalance <
-              amountPaise
+                amountPaise
             ) {
               throw new Error(
                 'Insufficient wallet balance.'
               );
             }
 
-            if (
+            newBalance =
               type === 'credit'
-            ) {
-              newBalance =
-                oldBalance +
-                amountPaise;
-            } else {
-              newBalance =
-                oldBalance -
-                amountPaise;
-            }
+                ? oldBalance +
+                  amountPaise
+                : oldBalance -
+                  amountPaise;
 
             wallet.balance =
               newBalance;
@@ -2373,9 +3714,7 @@ app.post(
                     user._id,
 
                   type:
-                    type === 'credit'
-                      ? 'credit'
-                      : 'debit',
+                    type,
 
                   amount:
                     amountPaise,
@@ -2401,24 +3740,10 @@ app.post(
           }
         );
 
-      } catch (error) {
-        if (
-          error.message ===
-            'User not found.' ||
-          error.message ===
-            'Insufficient wallet balance.'
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              error.message
-          });
-        }
-
-        throw error;
-
       } finally {
         await mongoSession.endSession();
+        mongoSession =
+          null;
       }
 
       return res.json({
@@ -2432,19 +3757,27 @@ app.post(
       });
 
     } catch (error) {
+      if (mongoSession) {
+        try {
+          await mongoSession.endSession();
+        } catch {}
+      }
+
       console.error(
         'Admin balance error:',
         error
       );
 
-      return res.status(500).json({
+      return res.status(400).json({
         success: false,
         message:
+          error.message ||
           'Unable to update balance.'
       });
     }
   }
 );
+
 
 // =====================================================
 // ADMIN WITHDRAWALS
@@ -2512,6 +3845,20 @@ app.get(
               ifsc:
                 item.ifsc,
 
+              astropay_order_id:
+                item.astropay_order_id,
+
+              utr:
+                item.astropay_utr,
+
+              commission:
+                Number(
+                  item.commission || 0
+                ) / 100,
+
+              remark:
+                item.remark,
+
               status:
                 item.status,
 
@@ -2539,71 +3886,13 @@ app.get(
   }
 );
 
+
 // =====================================================
-// ADMIN PROCESSING WITHDRAWAL
+// ADMIN PROCESSING
 // =====================================================
 
 app.post(
   '/api/admin/withdrawals/:id/processing',
-  admin,
-  async (req, res) => {
-    try {
-      const withdrawal =
-        await Withdrawal.findById(
-          req.params.id
-        );
-
-      if (!withdrawal) {
-        return res.status(404).json({
-          success: false,
-          message:
-            'Withdrawal not found.'
-        });
-      }
-
-      if (
-        withdrawal.status !==
-        'pending'
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            'Only pending withdrawals can be moved to processing.'
-        });
-      }
-
-      withdrawal.status =
-        'processing';
-
-      await withdrawal.save();
-
-      return res.json({
-        success: true,
-        message:
-          'Withdrawal moved to processing.'
-      });
-
-    } catch (error) {
-      console.error(
-        'Processing withdrawal error:',
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          'Unable to process withdrawal.'
-      });
-    }
-  }
-);
-
-// =====================================================
-// ADMIN COMPLETE WITHDRAWAL
-// =====================================================
-
-app.post(
-  '/api/admin/withdrawals/:id/complete',
   admin,
   async (req, res) => {
     try {
@@ -2627,30 +3916,57 @@ app.post(
         return res.status(400).json({
           success: false,
           message:
-            'Withdrawal must be processing before completion.'
+            'Withdrawal is not in processing state.'
         });
       }
-
-      withdrawal.status =
-        'completed';
-
-      withdrawal.processed_at =
-        new Date();
-
-      await withdrawal.save();
 
       return res.json({
         success: true,
         message:
-          'Withdrawal marked as completed.'
+          'Withdrawal is already being processed by AstroPay.'
       });
 
     } catch (error) {
-      console.error(
-        'Complete withdrawal error:',
-        error
-      );
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to update withdrawal.'
+      });
+    }
+  }
+);
 
+
+// =====================================================
+// ADMIN COMPLETE
+// =====================================================
+
+app.post(
+  '/api/admin/withdrawals/:id/complete',
+  admin,
+  async (req, res) => {
+    try {
+      const withdrawal =
+        await Withdrawal.findById(
+          req.params.id
+        );
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal not found.'
+        });
+      }
+
+      return res.json({
+        success: true,
+
+        message:
+          'AstroPay controls final settlement. Use the webhook/query status.'
+      });
+
+    } catch (error) {
       return res.status(500).json({
         success: false,
         message:
@@ -2660,142 +3976,63 @@ app.post(
   }
 );
 
+
 // =====================================================
-// ADMIN REJECT WITHDRAWAL + REFUND
+// ADMIN REJECT
 // =====================================================
 
 app.post(
   '/api/admin/withdrawals/:id/reject',
   admin,
   async (req, res) => {
-
-    const mongoSession =
-      await mongoose.startSession();
-
     try {
-      await mongoSession.withTransaction(
-        async () => {
+      const withdrawal =
+        await Withdrawal.findById(
+          req.params.id
+        );
 
-          const withdrawal =
-            await Withdrawal.findById(
-              req.params.id
-            ).session(
-              mongoSession
-            );
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          message:
+            'Withdrawal not found.'
+        });
+      }
 
-          if (!withdrawal) {
-            throw new Error(
-              'Withdrawal not found.'
-            );
-          }
-
-          if (
-            withdrawal.status !==
-            'pending'
-          ) {
-            throw new Error(
-              'Withdrawal is already processed.'
-            );
-          }
-
-          const wallet =
-            await ensureWallet(
-              withdrawal.user_id,
-              mongoSession
-            );
-
-          const oldBalance =
-            Number(
-              wallet.balance || 0
-            );
-
-          const newBalance =
-            oldBalance +
-            Number(
-              withdrawal.amount
-            );
-
-          wallet.balance =
-            newBalance;
-
-          wallet.updated_at =
-            new Date();
-
-          await wallet.save({
-            session:
-              mongoSession
-          });
-
-          await WalletTransaction.create(
-            [
-              {
-                user_id:
-                  withdrawal.user_id,
-
-                type:
-                  'refund',
-
-                amount:
-                  withdrawal.amount,
-
-                balance_after:
-                  newBalance,
-
-                reference_type:
-                  'withdrawal_refund',
-
-                reference_id:
-                  String(
-                    withdrawal._id
-                  ),
-
-                created_at:
-                  new Date()
-              }
-            ],
-            {
-              session:
-                mongoSession
-            }
-          );
-
-          withdrawal.status =
-            'rejected';
-
-          withdrawal.processed_at =
-            new Date();
-
-          await withdrawal.save({
-            session:
-              mongoSession
-          });
-        }
-      );
-
-      return res.json({
-        success: true,
-        message:
-          'Withdrawal rejected and amount refunded.'
-      });
-
-    } catch (error) {
-      console.error(
-        'Reject withdrawal error:',
-        error
-      );
+      if (
+        withdrawal.status ===
+          'failed' ||
+        withdrawal.status ===
+          'completed'
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'This withdrawal is already finalized by AstroPay.'
+        });
+      }
 
       return res.status(400).json({
         success: false,
         message:
-          error.message ||
-          'Unable to reject withdrawal.'
+          'Do not manually reject an active AstroPay payout. AstroPay will send status 9 if the payout fails and the server will automatically refund the wallet.'
       });
 
-    } finally {
-      await mongoSession.endSession();
+    } catch (error) {
+      console.error(
+        'Admin reject error:',
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to reject withdrawal.'
+      });
     }
   }
 );
+
 
 // =====================================================
 // ADMIN SUMMARY
@@ -2813,7 +4050,8 @@ app.get(
         await Wallet.aggregate([
           {
             $group: {
-              _id: null,
+              _id:
+                null,
 
               total: {
                 $sum: {
@@ -2829,7 +4067,8 @@ app.get(
 
       const totalBalancePaise =
         Number(
-          walletResult[0]?.total || 0
+          walletResult[0]?.total ||
+          0
         );
 
       const withdrawalResult =
@@ -2849,58 +4088,76 @@ app.get(
               },
 
               count: {
-                $sum: 1
+                $sum:
+                  1
               }
             }
           }
         ]);
 
-      let pendingWithdrawals = 0;
-      let processingWithdrawals = 0;
-      let completedWithdrawals = 0;
+      let pending =
+        0;
 
-      let totalWithdrawnPaise = 0;
+      let processing =
+        0;
+
+      let completed =
+        0;
+
+      let failed =
+        0;
+
+      let totalWithdrawnPaise =
+        0;
 
       for (
-        const item of withdrawalResult
+        const item of
+        withdrawalResult
       ) {
         const status =
           String(
             item._id || ''
           ).toLowerCase();
 
-        const amount =
-          Number(
-            item.totalAmount || 0
-          );
-
         const count =
           Number(
             item.count || 0
           );
 
+        const amount =
+          Number(
+            item.totalAmount || 0
+          );
+
         if (
           status === 'pending'
         ) {
-          pendingWithdrawals =
+          pending =
             count;
         }
 
         if (
           status === 'processing'
         ) {
-          processingWithdrawals =
+          processing =
             count;
         }
 
         if (
           status === 'completed'
         ) {
-          completedWithdrawals =
+          completed =
             count;
 
           totalWithdrawnPaise +=
             amount;
+        }
+
+        if (
+          status === 'failed'
+        ) {
+          failed =
+            count;
         }
       }
 
@@ -2919,7 +4176,8 @@ app.get(
 
           {
             $group: {
-              _id: null,
+              _id:
+                null,
 
               totalAmount: {
                 $sum: {
@@ -2931,7 +4189,8 @@ app.get(
               },
 
               count: {
-                $sum: 1
+                $sum:
+                  1
               }
             }
           }
@@ -2939,12 +4198,14 @@ app.get(
 
       const totalPaymentsPaise =
         Number(
-          paymentResult[0]?.totalAmount || 0
+          paymentResult[0]?.totalAmount ||
+          0
         );
 
       const successfulPayments =
         Number(
-          paymentResult[0]?.count || 0
+          paymentResult[0]?.count ||
+          0
         );
 
       return res.json({
@@ -2952,15 +4213,6 @@ app.get(
 
         total_users:
           totalUsers,
-
-        pending_withdrawals:
-          pendingWithdrawals,
-
-        completed_withdrawals:
-          completedWithdrawals,
-
-        successful_payments:
-          successfulPayments,
 
         totalUsers:
           totalUsers,
@@ -2978,13 +4230,25 @@ app.get(
           totalWithdrawnPaise / 100,
 
         pending:
-          pendingWithdrawals,
+          pending,
+
+        pending_withdrawals:
+          pending,
 
         processing:
-          processingWithdrawals,
+          processing,
 
         processing_withdrawals:
-          processingWithdrawals,
+          processing,
+
+        completed_withdrawals:
+          completed,
+
+        failed_withdrawals:
+          failed,
+
+        successful_payments:
+          successfulPayments,
 
         totalPayments:
           totalPaymentsPaise / 100,
@@ -3008,6 +4272,7 @@ app.get(
   }
 );
 
+
 // =====================================================
 // ADMIN TOTAL USERS
 // =====================================================
@@ -3027,11 +4292,6 @@ app.get(
       });
 
     } catch (error) {
-      console.error(
-        'Admin total users error:',
-        error
-      );
-
       return res.status(500).json({
         success: false,
         message:
@@ -3040,6 +4300,7 @@ app.get(
     }
   }
 );
+
 
 // =====================================================
 // LOGOUT
@@ -3050,9 +4311,7 @@ app.post(
   (req, res) => {
     if (!req.session) {
       return res.json({
-        success: true,
-        message:
-          'Logged out successfully.'
+        success: true
       });
     }
 
@@ -3085,15 +4344,19 @@ app.post(
   }
 );
 
+
 // =====================================================
 // STATIC FILES
 // =====================================================
 
 app.use(
   express.static(
-    path.join(__dirname)
+    path.join(
+      __dirname
+    )
   )
 );
+
 
 // =====================================================
 // ROOT
@@ -3111,6 +4374,7 @@ app.get(
   }
 );
 
+
 // =====================================================
 // ERROR HANDLER
 // =====================================================
@@ -3127,7 +4391,9 @@ app.use(
       err
     );
 
-    if (res.headersSent) {
+    if (
+      res.headersSent
+    ) {
       return next(err);
     }
 
@@ -3138,6 +4404,7 @@ app.use(
     });
   }
 );
+
 
 // =====================================================
 // START SERVER
@@ -3154,7 +4421,22 @@ async function startServer() {
     );
 
     console.log(
-      'RS Payment Gateway: REMOVED'
+      'AstroPay:',
+      ASTROPAY_MERCHANT_KEY
+        ? 'configured'
+        : 'NOT configured'
+    );
+
+    console.log(
+      'Deposit callback:',
+      ASTROPAY_DEPOSIT_CALLBACK_URL ||
+        'NOT CONFIGURED'
+    );
+
+    console.log(
+      'Withdrawal callback:',
+      ASTROPAY_WITHDRAW_CALLBACK_URL ||
+        'NOT CONFIGURED'
     );
 
     app.listen(
@@ -3162,6 +4444,10 @@ async function startServer() {
       () => {
         console.log(
           `TRUE WALK server running on port ${PORT}`
+        );
+
+        console.log(
+          `Local: http://localhost:${PORT}`
         );
       }
     );
