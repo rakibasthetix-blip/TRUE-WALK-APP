@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const session = require('express-session');
+
 const MongoStore =
   require('connect-mongo').default || require('connect-mongo');
 
@@ -24,9 +25,7 @@ const MONGO_URI =
   process.env.MONGODB_URI || process.env.MONGO_URI;
 
 if (!MONGO_URI) {
-  console.error(
-    'ERROR: MONGODB_URI (or MONGO_URI) is not configured.'
-  );
+  console.error('ERROR: MONGODB_URI is not configured.');
   process.exit(1);
 }
 
@@ -56,17 +55,6 @@ const WATCHPAYS_PAYIN_CALLBACK_URL =
 
 const WATCHPAYS_PAYOUT_CALLBACK_URL =
   process.env.WATCHPAYS_PAYOUT_CALLBACK_URL || '';
-
-/*
- * WatchPays callback documentation supplied by the user
- * does not specify a callback signature.
- *
- * Therefore callbacks are validated using:
- * - merchant/order/transaction identity
- * - amount matching
- * - current database status
- * - duplicate processing protection
- */
 
 /* ======================================================
    SCHEMAS
@@ -191,17 +179,13 @@ walletTransactionSchema.index(
   }
 );
 
-/* ======================================================
-   WATCHPAYS PAYMENT ORDER
-   ====================================================== */
-
 const paymentOrderSchema = new mongoose.Schema(
   {
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      index: true,
-      required: true
+      required: true,
+      index: true
     },
 
     merchant_order_no: {
@@ -262,10 +246,6 @@ const paymentOrderSchema = new mongoose.Schema(
     versionKey: false
   }
 );
-
-/* ======================================================
-   WITHDRAWAL
-   ====================================================== */
 
 const withdrawalSchema = new mongoose.Schema(
   {
@@ -341,22 +321,21 @@ const withdrawalSchema = new mongoose.Schema(
       default: Date.now
     },
 
-    processed_at: Date
+    processed_at: {
+      type: Date,
+      default: null
+    }
   },
   {
     versionKey: false
   }
 );
 
-const User = mongoose.model(
-  'User',
-  userSchema
-);
+const User =
+  mongoose.model('User', userSchema);
 
-const Wallet = mongoose.model(
-  'Wallet',
-  walletSchema
-);
+const Wallet =
+  mongoose.model('Wallet', walletSchema);
 
 const WalletTransaction =
   mongoose.model(
@@ -386,7 +365,7 @@ app.use(
 
     secret:
       process.env.SESSION_SECRET ||
-      'CHANGE_THIS_TO_A_LONG_RANDOM_SECRET',
+      'CHANGE_THIS_SECRET_IN_RENDER',
 
     resave: false,
 
@@ -416,39 +395,49 @@ app.use(
    HELPERS
    ====================================================== */
 
-const hash = (password, salt) =>
-  crypto
+function hash(password, salt) {
+  return crypto
     .scryptSync(
       String(password),
       salt,
       64
     )
     .toString('hex');
+}
 
-const makeRef = () =>
-  'TW' +
-  crypto
-    .randomBytes(8)
-    .toString('hex')
-    .toUpperCase();
+function makeRef() {
+  return (
+    'TW' +
+    crypto
+      .randomBytes(8)
+      .toString('hex')
+      .toUpperCase()
+  );
+}
 
-const makeMerchantOrderNo = () =>
-  'ORD_' +
-  Date.now() +
-  '_' +
-  crypto
-    .randomBytes(4)
-    .toString('hex')
-    .toUpperCase();
+function makeMerchantOrderNo() {
+  return (
+    'ORD_' +
+    Date.now() +
+    '_' +
+    crypto
+      .randomBytes(4)
+      .toString('hex')
+      .toUpperCase()
+  );
+}
 
-const makePayoutTransactionId = () =>
-  'WD_' +
-  Date.now() +
-  '_' +
-  crypto
-    .randomBytes(4)
-    .toString('hex')
-    .toUpperCase();
+function makePayoutTransactionId() {
+  return (
+    'WD_' +
+    Date.now() +
+    '_' +
+    crypto
+      .randomBytes(4)
+      .toString('hex')
+      .toUpperCase()
+  );
+}
 
 function moneyToPaise(amount) {
   const n = Number(amount);
@@ -457,21 +446,40 @@ function moneyToPaise(amount) {
     return null;
   }
 
-  return Math.round(
-    n * 100
-  );
+  return Math.round(n * 100);
 }
 
 function paiseToMoney(paise) {
-  return Number(
-    paise || 0
-  ) / 100;
+  return Number(paise || 0) / 100;
 }
 
 function formatAmount(paise) {
-  return paiseToMoney(
-    paise
-  ).toFixed(2);
+  return paiseToMoney(paise).toFixed(2);
+}
+
+/*
+ * WatchPays payout documentation uses examples such as:
+ *
+ * amount = 150
+ *
+ * So payout amount is sent as:
+ *
+ * 150
+ *
+ * rather than:
+ *
+ * 150.00
+ */
+function formatPayoutAmount(paise) {
+  const amount = paiseToMoney(paise);
+
+  if (!Number.isFinite(amount)) {
+    throw new Error('Invalid payout amount.');
+  }
+
+  return Number.isInteger(amount)
+    ? String(amount)
+    : amount.toFixed(2);
 }
 
 async function ensureWallet(userId) {
@@ -479,19 +487,15 @@ async function ensureWallet(userId) {
     {
       user_id: userId
     },
-
     {
       $setOnInsert: {
         user_id: userId,
         balance: 0
       },
-
       $set: {
-        updated_at:
-          new Date()
+        updated_at: new Date()
       }
     },
-
     {
       upsert: true,
       new: true
@@ -505,8 +509,7 @@ function login(req, res, next) {
   }
 
   return res.status(401).json({
-    message:
-      'Please login first.'
+    message: 'Please login first.'
   });
 }
 
@@ -516,8 +519,7 @@ function admin(req, res, next) {
   }
 
   return res.status(401).json({
-    message:
-      'Admin login required.'
+    message: 'Admin login required.'
   });
 }
 
@@ -530,7 +532,7 @@ function safeUser(u) {
 }
 
 /* ======================================================
-   WATCHPAYS HELPERS
+   WATCHPAYS CONFIG CHECK
    ====================================================== */
 
 function watchpaysConfiguredPayin() {
@@ -549,22 +551,9 @@ function watchpaysConfiguredPayout() {
   );
 }
 
-/*
- * Pay-in signature:
- *
- * Sort:
- * amount
- * callback_url
- * merchant_id
- * merchant_order_no
- *
- * Then:
- *
- * amount=...&callback_url=...&merchant_id=...&
- * merchant_order_no=...&key=API_KEY
- *
- * MD5
- */
+/* ======================================================
+   WATCHPAYS PAY-IN SIGNATURE
+   ====================================================== */
 
 function createWatchPaysPayinSignature({
   merchant_id,
@@ -583,21 +572,15 @@ function createWatchPaysPayinSignature({
     Object.keys(params)
       .filter(
         (key) =>
-          params[key] !==
-            undefined &&
-          params[key] !==
-            null &&
-          String(
-            params[key]
-          ) !== ''
+          params[key] !== undefined &&
+          params[key] !== null &&
+          String(params[key]) !== ''
       )
       .sort();
 
   let signString = '';
 
-  for (
-    const key of sortedKeys
-  ) {
+  for (const key of sortedKeys) {
     signString +=
       `${key}=${params[key]}&`;
   }
@@ -611,20 +594,24 @@ function createWatchPaysPayinSignature({
     .digest('hex');
 }
 
+/* ======================================================
+   WATCHPAYS PAYOUT SIGNATURE
+   ====================================================== */
+
 /*
- * Payout signature:
+ * EXACT WatchPays documentation:
  *
- * account_number
- * amount
- * bank_name
- * callback_url
- * ifsc
- * merchant_id
- * name
- * transaction_id
- * payout_key
- *
- * Concatenate directly.
+ * md5(
+ *   account_number +
+ *   amount +
+ *   bank_name +
+ *   callback_url +
+ *   ifsc +
+ *   merchant_id +
+ *   name +
+ *   transaction_id +
+ *   payout_key
+ * )
  */
 
 function createWatchPaysPayoutSignature({
@@ -654,6 +641,10 @@ function createWatchPaysPayoutSignature({
     .digest('hex');
 }
 
+/* ======================================================
+   HTTP HELPER
+   ====================================================== */
+
 async function watchpaysFetch(
   url,
   options = {}
@@ -663,8 +654,7 @@ async function watchpaysFetch(
 
   const timeout =
     setTimeout(
-      () =>
-        controller.abort(),
+      () => controller.abort(),
       30000
     );
 
@@ -673,8 +663,7 @@ async function watchpaysFetch(
       url,
       {
         ...options,
-        signal:
-          controller.signal
+        signal: controller.signal
       }
     );
   } finally {
@@ -682,9 +671,7 @@ async function watchpaysFetch(
   }
 }
 
-async function readJsonResponse(
-  response
-) {
+async function readJsonResponse(response) {
   const text =
     await response.text();
 
@@ -710,9 +697,7 @@ app.get(
   (req, res) => {
     res.json({
       success: true,
-
-      service:
-        'TRUE WALK',
+      service: 'TRUE WALK',
 
       payment_gateway:
         watchpaysConfiguredPayin()
@@ -734,19 +719,12 @@ app.get(
 app.get(
   '/home.html',
   (req, res) => {
-    if (
-      !req.session.userId
-    ) {
-      return res.redirect(
-        '/login.html'
-      );
+    if (!req.session.userId) {
+      return res.redirect('/login.html');
     }
 
     return res.sendFile(
-      path.join(
-        __dirname,
-        'home.html'
-      )
+      path.join(__dirname, 'home.html')
     );
   }
 );
@@ -769,19 +747,15 @@ app.post(
     ) {
       return res.status(503).json({
         message:
-          'Admin credentials are not configured in Render Environment Variables.'
+          'Admin credentials are not configured.'
       });
     }
 
     if (
       String(username || '') !==
-        String(
-          process.env.ADMIN_USERNAME
-        ) ||
+        String(process.env.ADMIN_USERNAME) ||
       String(password || '') !==
-        String(
-          process.env.ADMIN_PASSWORD
-        )
+        String(process.env.ADMIN_PASSWORD)
     ) {
       return res.status(401).json({
         message:
@@ -798,8 +772,7 @@ app.post(
           });
         }
 
-        req.session.isAdmin =
-          true;
+        req.session.isAdmin = true;
 
         req.session.save(
           (saveErr) => {
@@ -812,7 +785,6 @@ app.post(
 
             return res.json({
               success: true,
-
               message:
                 'Admin login successful.'
             });
@@ -827,17 +799,13 @@ app.post(
   '/api/admin/logout',
   admin,
   (req, res) => {
-    req.session.destroy(
-      () => {
-        res.clearCookie(
-          'truewalk.sid'
-        );
+    req.session.destroy(() => {
+      res.clearCookie('truewalk.sid');
 
-        res.json({
-          success: true
-        });
-      }
-    );
+      res.json({
+        success: true
+      });
+    });
   }
 );
 
@@ -867,11 +835,7 @@ app.post(
         referralCode
       } = req.body;
 
-      if (
-        !name ||
-        !phone ||
-        !password
-      ) {
+      if (!name || !phone || !password) {
         return res.status(400).json({
           message:
             'Name, mobile number and password are required.'
@@ -881,19 +845,14 @@ app.post(
       const ph =
         String(phone).trim();
 
-      if (
-        !/^\d{10}$/.test(ph)
-      ) {
+      if (!/^\d{10}$/.test(ph)) {
         return res.status(400).json({
           message:
             'Please enter a valid 10-digit mobile number.'
         });
       }
 
-      if (
-        String(password).length <
-        6
-      ) {
+      if (String(password).length < 6) {
         return res.status(400).json({
           message:
             'Password must be at least 6 characters.'
@@ -916,9 +875,7 @@ app.post(
 
       if (referralCode) {
         const c =
-          String(
-            referralCode
-          )
+          String(referralCode)
             .trim()
             .toUpperCase();
 
@@ -947,9 +904,7 @@ app.post(
             referral_code: rc
           });
 
-        if (!exists) {
-          break;
-        }
+        if (!exists) break;
       }
 
       const salt =
@@ -958,54 +913,30 @@ app.post(
           .toString('hex');
 
       const passwordHash =
-        hash(
-          password,
-          salt
-        );
+        hash(password, salt);
 
       const user =
         await User.create({
-          name:
-            String(name).trim(),
-
+          name: String(name).trim(),
           phone: ph,
-
           salt,
-
-          password_hash:
-            passwordHash,
-
-          referral_code:
-            rc,
-
-          referred_by:
-            referredBy
+          password_hash: passwordHash,
+          referral_code: rc,
+          referred_by: referredBy
         });
 
-      await ensureWallet(
-        user._id
-      );
+      await ensureWallet(user._id);
 
       return res.status(201).json({
         message:
           'Registration successful.',
-
-        userId:
-          user._id,
-
-        referralCode:
-          rc
+        userId: user._id,
+        referralCode: rc
       });
     } catch (e) {
-      console.error(
-        'REGISTER ERROR:',
-        e
-      );
+      console.error('REGISTER ERROR:', e);
 
-      if (
-        e &&
-        e.code === 11000
-      ) {
+      if (e && e.code === 11000) {
         return res.status(409).json({
           message:
             'This mobile number or referral code is already registered.'
@@ -1013,8 +944,7 @@ app.post(
       }
 
       return res.status(500).json({
-        message:
-          'Registration failed.'
+        message: 'Registration failed.'
       });
     }
   }
@@ -1036,17 +966,12 @@ app.post(
       const u =
         await User.findOne({
           phone:
-            String(
-              phone || ''
-            ).trim()
+            String(phone || '').trim()
         });
 
       if (
         !u ||
-        hash(
-          password,
-          u.salt
-        ) !==
+        hash(password, u.salt) !==
           u.password_hash
       ) {
         return res.status(401).json({
@@ -1055,9 +980,7 @@ app.post(
         });
       }
 
-      await ensureWallet(
-        u._id
-      );
+      await ensureWallet(u._id);
 
       req.session.regenerate(
         (err) => {
@@ -1071,8 +994,7 @@ app.post(
           req.session.userId =
             String(u._id);
 
-          req.session.isAdmin =
-            false;
+          req.session.isAdmin = false;
 
           req.session.save(
             (saveErr) => {
@@ -1086,23 +1008,17 @@ app.post(
               return res.json({
                 message:
                   'Login successful.',
-
-                user:
-                  safeUser(u)
+                user: safeUser(u)
               });
             }
           );
         }
       );
     } catch (e) {
-      console.error(
-        'LOGIN ERROR:',
-        e
-      );
+      console.error('LOGIN ERROR:', e);
 
       return res.status(500).json({
-        message:
-          'Login failed.'
+        message: 'Login failed.'
       });
     }
   }
@@ -1132,32 +1048,22 @@ app.get(
       }
 
       const w =
-        await ensureWallet(
-          u._id
-        );
+        await ensureWallet(u._id);
 
       return res.json({
         user: {
           id: u._id,
-
           name: u.name,
-
           phone: u.phone,
-
           referral_code:
             u.referral_code
         },
 
         balance:
-          paiseToMoney(
-            w.balance
-          )
+          paiseToMoney(w.balance)
       });
     } catch (e) {
-      console.error(
-        'ME ERROR:',
-        e
-      );
+      console.error('ME ERROR:', e);
 
       return res.status(500).json({
         message:
@@ -1196,9 +1102,7 @@ app.get(
         success: true,
 
         balance:
-          paiseToMoney(
-            w.balance
-          ),
+          paiseToMoney(w.balance),
 
         updatedAt:
           w.updated_at,
@@ -1210,9 +1114,7 @@ app.get(
             id: x._id,
 
             amount:
-              paiseToMoney(
-                x.amount
-              ),
+              paiseToMoney(x.amount),
 
             balanceAfter:
               paiseToMoney(
@@ -1221,10 +1123,7 @@ app.get(
           }))
       });
     } catch (e) {
-      console.error(
-        'WALLET ERROR:',
-        e
-      );
+      console.error('WALLET ERROR:', e);
 
       return res.status(500).json({
         message:
@@ -1235,98 +1134,67 @@ app.get(
 );
 
 /* ======================================================
-   WATCHPAYS CREATE PAYMENT
+   WATCHPAYS PAY-IN
    ====================================================== */
-
-/*
- * Primary endpoint:
- * POST /api/payments/create
- *
- * Also available:
- * POST /api/payment/create
- *
- * Body:
- * {
- *   "amount": 100
- * }
- */
 
 async function createWatchPaysPayment(
   req,
   res
 ) {
   try {
-    if (
-      !watchpaysConfiguredPayin()
-    ) {
+    if (!watchpaysConfiguredPayin()) {
       return res.status(503).json({
         success: false,
-
         message:
           'WatchPays payment gateway is not configured.'
       });
     }
 
     const amount =
-      Number(
-        req.body.amount
-      );
+      Number(req.body.amount);
 
     if (
-      !Number.isFinite(
-        amount
-      ) ||
+      !Number.isFinite(amount) ||
       amount <= 0
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           'Please enter a valid payment amount.'
       });
     }
 
     const paise =
-      moneyToPaise(
-        amount
-      );
+      moneyToPaise(amount);
 
-    if (
-      !paise ||
-      paise <= 0
-    ) {
+    if (!paise || paise <= 0) {
       return res.status(400).json({
         success: false,
-
         message:
           'Invalid payment amount.'
       });
     }
 
     const amountString =
-      formatAmount(
-        paise
-      );
+      formatAmount(paise);
 
     const merchantOrderNo =
       makeMerchantOrderNo();
 
     const signature =
-      createWatchPaysPayinSignature(
-        {
-          merchant_id:
-            WATCHPAYS_MERCHANT_ID,
+      createWatchPaysPayinSignature({
+        merchant_id:
+          WATCHPAYS_MERCHANT_ID,
 
-          amount:
-            amountString,
+        amount:
+          amountString,
 
-          merchant_order_no:
-            merchantOrderNo,
+        merchant_order_no:
+          merchantOrderNo,
 
-          callback_url:
-            WATCHPAYS_PAYIN_CALLBACK_URL
-        }
-      );
+        callback_url:
+          WATCHPAYS_PAYIN_CALLBACK_URL
+      });
 
     const payload = {
       merchant_id:
@@ -1345,9 +1213,7 @@ async function createWatchPaysPayment(
         WATCHPAYS_PAYIN_CALLBACK_URL,
 
       extra:
-        String(
-          req.session.userId
-        ),
+        String(req.session.userId),
 
       signature
     };
@@ -1377,8 +1243,7 @@ async function createWatchPaysPayment(
         await watchpaysFetch(
           WATCHPAYS_PAYIN_URL,
           {
-            method:
-              'POST',
+            method: 'POST',
 
             headers: {
               'Content-Type':
@@ -1389,14 +1254,17 @@ async function createWatchPaysPayment(
             },
 
             body:
-              JSON.stringify(
-                payload
-              )
+              JSON.stringify(payload)
           }
         );
     } catch (gatewayError) {
       order.status =
         'gateway_error';
+
+      order.gateway_response = {
+        error:
+          gatewayError.message
+      };
 
       order.updated_at =
         new Date();
@@ -1404,13 +1272,12 @@ async function createWatchPaysPayment(
       await order.save();
 
       console.error(
-        'WATCHPAYS PAYMENT REQUEST ERROR:',
+        'WATCHPAYS PAYIN ERROR:',
         gatewayError
       );
 
       return res.status(502).json({
         success: false,
-
         message:
           'Unable to connect to WatchPays.'
       });
@@ -1441,17 +1308,6 @@ async function createWatchPaysPayment(
 
       await order.save();
 
-      console.error(
-        'WATCHPAYS PAYMENT ERROR:',
-        {
-          httpStatus:
-            response.status,
-
-          response:
-            data || parsed.raw
-        }
-      );
-
       return res.status(502).json({
         success: false,
 
@@ -1462,15 +1318,13 @@ async function createWatchPaysPayment(
     }
 
     order.gateway_order_no =
-      data.order_no ||
-      null;
+      data.order_no || null;
 
     order.payment_url =
       data.payment_url;
 
     order.status =
-      data.status ||
-      'created';
+      data.status || 'created';
 
     order.gateway_response =
       data;
@@ -1488,20 +1342,16 @@ async function createWatchPaysPayment(
           merchantOrderNo,
 
         gatewayOrderNo:
-          data.order_no ||
-          null,
+          data.order_no || null,
 
         amount:
-          paiseToMoney(
-            paise
-          ),
+          paiseToMoney(paise),
 
         paymentUrl:
           data.payment_url,
 
         status:
-          data.status ||
-          'created'
+          data.status || 'created'
       }
     });
   } catch (e) {
@@ -1512,7 +1362,6 @@ async function createWatchPaysPayment(
 
     return res.status(500).json({
       success: false,
-
       message:
         'Unable to create payment.'
     });
@@ -1532,7 +1381,7 @@ app.post(
 );
 
 /* ======================================================
-   PAYMENT ORDER HISTORY
+   PAYMENT HISTORY
    ====================================================== */
 
 app.get(
@@ -1565,9 +1414,7 @@ app.get(
               x.gateway_order_no,
 
             amount:
-              paiseToMoney(
-                x.amount
-              ),
+              paiseToMoney(x.amount),
 
             currency:
               x.currency,
@@ -1593,7 +1440,6 @@ app.get(
 
       return res.status(500).json({
         success: false,
-
         message:
           'Unable to load payment history.'
       });
@@ -1602,37 +1448,68 @@ app.get(
 );
 
 /* ======================================================
-   WATCHPAYS PAYMENT CALLBACK
+   WATCHPAYS PAY-IN CALLBACK
    ====================================================== */
 
 /*
- * WatchPays documentation:
+ * IMPORTANT:
+ * Your supplied WatchPays documentation did not include
+ * the official Pay-in callback payload.
  *
- * {
- *   orderNo: "GW...",
- *   merchantOrder: "ORD...",
- *   status: "success",
- *   amount: 1000
- * }
+ * This handler accepts common names:
  *
- * No callback signature is documented.
+ * merchantOrder / merchant_order_no
+ * orderNo / order_no / gateway_order_no
+ * status
+ * amount
+ *
+ * Wallet is credited ONLY when:
+ *
+ * 1. Order exists
+ * 2. Amount matches
+ * 3. Gateway order matches when already known
+ * 4. Status is success
+ * 5. Order is not already paid
+ *
+ * Get the exact WatchPays Pay-in callback documentation
+ * and update this handler if their actual field names differ.
  */
 
 app.post(
   '/api/watchpays/callback',
   async (req, res) => {
     try {
-      const {
-        orderNo,
-        merchantOrder,
-        status,
-        amount
-      } = req.body || {};
+      const body =
+        req.body || {};
+
+      const merchantOrder =
+        body.merchantOrder ||
+        body.merchant_order_no ||
+        body.merchant_order ||
+        body.order_id ||
+        null;
+
+      const orderNo =
+        body.orderNo ||
+        body.order_no ||
+        body.gateway_order_no ||
+        body.gatewayOrderNo ||
+        null;
+
+      const amount =
+        body.amount;
+
+      const status =
+        body.status ||
+        body.payment_status ||
+        body.order_status ||
+        '';
 
       if (
         !merchantOrder ||
-        !orderNo ||
-        !status
+        !status ||
+        amount === undefined ||
+        amount === null
       ) {
         return res.status(400).send(
           'invalid callback'
@@ -1642,9 +1519,7 @@ app.post(
       const order =
         await PaymentOrder.findOne({
           merchant_order_no:
-            String(
-              merchantOrder
-            )
+            String(merchantOrder)
         });
 
       if (!order) {
@@ -1654,10 +1529,9 @@ app.post(
       }
 
       if (
+        orderNo &&
         order.gateway_order_no &&
-        String(
-          order.gateway_order_no
-        ) !==
+        String(order.gateway_order_no) !==
           String(orderNo)
       ) {
         return res.status(400).send(
@@ -1666,68 +1540,49 @@ app.post(
       }
 
       const callbackPaise =
-        moneyToPaise(
-          amount
-        );
+        moneyToPaise(amount);
 
       if (
-        callbackPaise ===
-          null ||
+        callbackPaise === null ||
         callbackPaise !==
           Number(order.amount)
       ) {
-        console.error(
-          'WATCHPAYS PAYMENT AMOUNT MISMATCH',
-          {
-            merchantOrder,
-            expected:
-              order.amount,
-            received:
-              callbackPaise
-          }
-        );
-
         return res.status(400).send(
           'amount mismatch'
         );
       }
 
       const normalizedStatus =
-        String(
-          status
-        ).toLowerCase();
+        String(status).toLowerCase();
 
-      /*
-       * Duplicate callback protection.
-       */
       if (
-        order.status ===
-        'paid'
+        order.status === 'paid'
       ) {
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
       if (
-        normalizedStatus !==
-        'success'
+        ![
+          'success',
+          'paid',
+          'completed'
+        ].includes(
+          normalizedStatus
+        )
       ) {
         order.status =
           normalizedStatus ||
           'failed';
 
         order.gateway_response =
-          req.body;
+          body;
 
         order.updated_at =
           new Date();
 
         await order.save();
 
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
       const dbSession =
@@ -1745,7 +1600,7 @@ app.post(
 
             if (!freshOrder) {
               throw new Error(
-                'Payment order disappeared.'
+                'Payment order not found.'
               );
             }
 
@@ -1767,17 +1622,12 @@ app.post(
                 user_id:
                   freshOrder.user_id,
 
-                balance:
-                  0
+                balance: 0
               });
 
             const newBalance =
-              Number(
-                wallet.balance
-              ) +
-              Number(
-                freshOrder.amount
-              );
+              Number(wallet.balance) +
+              Number(freshOrder.amount);
 
             wallet.balance =
               newBalance;
@@ -1820,14 +1670,16 @@ app.post(
               }
             );
 
-            freshOrder.gateway_order_no =
-              String(orderNo);
+            if (orderNo) {
+              freshOrder.gateway_order_no =
+                String(orderNo);
+            }
 
             freshOrder.status =
               'paid';
 
             freshOrder.gateway_response =
-              req.body;
+              body;
 
             freshOrder.paid_at =
               new Date();
@@ -1845,12 +1697,10 @@ app.post(
         await dbSession.endSession();
       }
 
-      return res.send(
-        'success'
-      );
+      return res.send('success');
     } catch (e) {
       console.error(
-        'WATCHPAYS PAYMENT CALLBACK ERROR:',
+        'WATCHPAYS PAYIN CALLBACK ERROR:',
         e
       );
 
@@ -1950,14 +1800,10 @@ app.get(
         referrals:
           rows.map((x) => ({
             id: x._id,
-
             name: x.name,
-
             phone: x.phone,
-
             referral_code:
               x.referral_code,
-
             created_at:
               x.created_at
           }))
@@ -1984,62 +1830,63 @@ app.get(
   '/api/orders',
   login,
   async (req, res) => {
-    const rows =
-      await PaymentOrder.find({
-        user_id:
-          req.session.userId
-      })
-        .sort({
-          created_at: -1
+    try {
+      const rows =
+        await PaymentOrder.find({
+          user_id:
+            req.session.userId
         })
-        .limit(100)
-        .lean();
+          .sort({
+            created_at: -1
+          })
+          .limit(100)
+          .lean();
 
-    return res.json({
-      orders:
-        rows.map((x) => ({
-          id: x._id,
+      return res.json({
+        orders:
+          rows.map((x) => ({
+            id: x._id,
 
-          merchantOrderNo:
-            x.merchant_order_no,
+            merchantOrderNo:
+              x.merchant_order_no,
 
-          gatewayOrderNo:
-            x.gateway_order_no,
+            gatewayOrderNo:
+              x.gateway_order_no,
 
-          amount:
-            paiseToMoney(
-              x.amount
-            ),
+            amount:
+              paiseToMoney(x.amount),
 
-          status:
-            x.status,
+            status:
+              x.status,
 
-          paymentUrl:
-            x.payment_url,
+            paymentUrl:
+              x.payment_url,
 
-          createdAt:
-            x.created_at,
+            createdAt:
+              x.created_at,
 
-          paidAt:
-            x.paid_at
-        }))
-    });
+            paidAt:
+              x.paid_at
+          }))
+      });
+    } catch (e) {
+      console.error(
+        'ORDERS ERROR:',
+        e
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          'Unable to load orders.'
+      });
+    }
   }
 );
 
 /* ======================================================
-   WITHDRAWAL REQUEST
+   WITHDRAWAL
    ====================================================== */
-
-/*
- * BANK:
- * Automatically sends payout to WatchPays.
- *
- * UPI:
- * WatchPays payout documentation supplied by user
- * does not document UPI payout. Therefore UPI remains
- * manual/admin processing.
- */
 
 app.post(
   '/api/withdrawals',
@@ -2050,9 +1897,7 @@ app.post(
         req.session.userId;
 
       const amount =
-        Number(
-          req.body.amount
-        );
+        Number(req.body.amount);
 
       const method =
         String(
@@ -2060,23 +1905,29 @@ app.post(
         ).toUpperCase();
 
       if (
-        !Number.isFinite(
-          amount
-        ) ||
+        !Number.isFinite(amount) ||
         amount < 50
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Minimum withdrawal amount is ₹50.'
         });
       }
 
       const pa =
-        moneyToPaise(
-          amount
-        );
+        moneyToPaise(amount);
+
+      if (
+        !pa ||
+        pa <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Invalid withdrawal amount.'
+        });
+      }
 
       if (
         !['UPI', 'BANK'].includes(
@@ -2085,7 +1936,6 @@ app.post(
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Please select a valid withdrawal method.'
         });
@@ -2098,9 +1948,7 @@ app.post(
       let ifsc = null;
       let bankName = null;
 
-      if (
-        method === 'UPI'
-      ) {
+      if (method === 'UPI') {
         upi =
           String(
             req.body.upiId || ''
@@ -2113,7 +1961,6 @@ app.post(
         ) {
           return res.status(400).json({
             success: false,
-
             message:
               'Please enter a valid UPI ID.'
           });
@@ -2121,14 +1968,12 @@ app.post(
       } else {
         name =
           String(
-            req.body.accountName ||
-              ''
+            req.body.accountName || ''
           ).trim();
 
         accountNumber =
           String(
-            req.body.accountNumber ||
-              ''
+            req.body.accountNumber || ''
           ).trim();
 
         const confirmAccountNumber =
@@ -2147,7 +1992,6 @@ app.post(
         ) {
           return res.status(400).json({
             success: false,
-
             message:
               'Please check bank details.'
           });
@@ -2167,7 +2011,6 @@ app.post(
         ) {
           return res.status(400).json({
             success: false,
-
             message:
               'Please enter a valid IFSC code.'
           });
@@ -2175,36 +2018,30 @@ app.post(
 
         bankName =
           String(
-            req.body.bankName ||
-              ''
+            req.body.bankName || ''
           ).trim();
 
-        if (
-          bankName.length < 2
-        ) {
+        if (bankName.length < 2) {
           return res.status(400).json({
             success: false,
-
             message:
               'Please enter bank name.'
           });
         }
 
         last4 =
-          accountNumber.slice(
-            -4
-          );
+          accountNumber.slice(-4);
       }
 
       const dbSession =
         await mongoose.startSession();
 
-      let result;
+      let result = null;
 
       try {
         await dbSession.withTransaction(
           async () => {
-            const w =
+            const wallet =
               await Wallet.findOne({
                 user_id: uid
               }).session(
@@ -2212,44 +2049,42 @@ app.post(
               );
 
             if (
-              !w ||
-              Number(w.balance) <
-                pa
+              !wallet ||
+              Number(wallet.balance) < pa
             ) {
               result = {
                 error:
                   'INSUFFICIENT',
 
-                balance: w
-                  ? Number(
-                      w.balance
-                    )
-                  : 0
+                balance:
+                  wallet
+                    ? Number(
+                        wallet.balance
+                      )
+                    : 0
               };
 
               return;
             }
 
             const payoutTransactionId =
-              makePayoutTransactionId();
+              method === 'BANK'
+                ? makePayoutTransactionId()
+                : null;
 
             const created =
               await Withdrawal.create(
                 [
                   {
-                    user_id:
-                      uid,
+                    user_id: uid,
 
-                    amount:
-                      pa,
+                    amount: pa,
 
-                    currency:
-                      'INR',
+                    currency: 'INR',
 
                     method,
 
-                    upi_id:
-                      upi,
+                    upi_id: upi,
 
                     account_name:
                       name,
@@ -2266,16 +2101,12 @@ app.post(
                       bankName,
 
                     status:
-                      method ===
-                      'BANK'
+                      method === 'BANK'
                         ? 'processing'
                         : 'pending',
 
                     payout_transaction_id:
-                      method ===
-                      'BANK'
-                        ? payoutTransactionId
-                        : null
+                      payoutTransactionId
                   }
                 ],
                 {
@@ -2285,17 +2116,16 @@ app.post(
               );
 
             const newBalance =
-              Number(
-                w.balance
-              ) - pa;
+              Number(wallet.balance) -
+              pa;
 
-            w.balance =
+            wallet.balance =
               newBalance;
 
-            w.updated_at =
+            wallet.updated_at =
               new Date();
 
-            await w.save({
+            await wallet.save({
               session:
                 dbSession
             });
@@ -2303,8 +2133,7 @@ app.post(
             await WalletTransaction.create(
               [
                 {
-                  user_id:
-                    uid,
+                  user_id: uid,
 
                   type:
                     'withdrawal',
@@ -2349,8 +2178,9 @@ app.post(
       }
 
       if (
+        result &&
         result.error ===
-        'INSUFFICIENT'
+          'INSUFFICIENT'
       ) {
         return res.status(400).json({
           success: false,
@@ -2365,19 +2195,12 @@ app.post(
         });
       }
 
-      /*
-       * UPI is manual because supplied WatchPays
-       * payout documentation only supports bank fields.
-       */
-      if (
-        result.method ===
-        'UPI'
-      ) {
+      if (method === 'UPI') {
         return res.status(201).json({
           success: true,
 
           message:
-            'UPI withdrawal request submitted for manual processing.',
+            'UPI withdrawal submitted for manual processing.',
 
           withdrawalId:
             result.id,
@@ -2392,16 +2215,13 @@ app.post(
         });
       }
 
-      /*
-       * BANK → WatchPays payout.
-       */
+      /* ==================================================
+         BANK → WATCHPAYS PAYOUT
+         ================================================== */
+
       if (
         !watchpaysConfiguredPayout()
       ) {
-        /*
-         * Gateway is not configured.
-         * Refund immediately because the amount was reserved.
-         */
         await refundWithdrawal(
           result.id,
           'WatchPays payout is not configured.'
@@ -2411,7 +2231,7 @@ app.post(
           success: false,
 
           message:
-            'WatchPays payout gateway is not configured. Amount has been refunded.'
+            'WatchPays payout is not configured. Amount has been refunded.'
         });
       }
 
@@ -2423,45 +2243,51 @@ app.post(
       if (!withdrawal) {
         return res.status(500).json({
           success: false,
-
           message:
             'Withdrawal record was not found.'
         });
       }
 
+      /*
+       * IMPORTANT:
+       * WatchPays docs example:
+       * amount = 150
+       *
+       * Therefore we send 150 instead of 150.00
+       * for whole-number INR amounts.
+       */
+
       const payoutAmount =
-        formatAmount(
+        formatPayoutAmount(
           withdrawal.amount
         );
 
       const payoutSignature =
-        createWatchPaysPayoutSignature(
-          {
-            account_number:
-              withdrawal.account_number,
+        createWatchPaysPayoutSignature({
+          account_number:
+            withdrawal.account_number,
 
-            amount:
-              payoutAmount,
+          amount:
+            payoutAmount,
 
-            bank_name:
-              withdrawal.bank_name,
+          bank_name:
+            withdrawal.bank_name,
 
-            callback_url:
-              WATCHPAYS_PAYOUT_CALLBACK_URL,
+          callback_url:
+            WATCHPAYS_PAYOUT_CALLBACK_URL,
 
-            ifsc:
-              withdrawal.ifsc,
+          ifsc:
+            withdrawal.ifsc,
 
-            merchant_id:
-              WATCHPAYS_MERCHANT_ID,
+          merchant_id:
+            WATCHPAYS_MERCHANT_ID,
 
-            name:
-              withdrawal.account_name,
+          name:
+            withdrawal.account_name,
 
-            transaction_id:
-              withdrawal.payout_transaction_id
-          }
-        );
+          transaction_id:
+            withdrawal.payout_transaction_id
+        });
 
       const payoutBody =
         new URLSearchParams();
@@ -2518,8 +2344,7 @@ app.post(
           await watchpaysFetch(
             WATCHPAYS_PAYOUT_URL,
             {
-              method:
-                'POST',
+              method: 'POST',
 
               headers: {
                 'Content-Type':
@@ -2535,7 +2360,7 @@ app.post(
           );
       } catch (gatewayError) {
         console.error(
-          'WATCHPAYS PAYOUT REQUEST ERROR:',
+          'WATCHPAYS PAYOUT CONNECTION ERROR:',
           gatewayError
         );
 
@@ -2560,19 +2385,30 @@ app.post(
       const payoutData =
         payoutParsed.data;
 
-      /*
-       * Save gateway response.
-       */
       withdrawal.payout_response =
         payoutData ||
         payoutParsed.raw;
+
+      /*
+       * WatchPays success response:
+       *
+       * {
+       *   "status": "success",
+       *   "message": "Withdrawal request received",
+       *   "data": {
+       *      "transaction_id": "...",
+       *      "amount": 150.00,
+       *      "fee": 5.25,
+       *      "total_amount": 155.25
+       *   }
+       * }
+       */
 
       if (
         !payoutResponse.ok ||
         !payoutData ||
         String(
-          payoutData.status ||
-            ''
+          payoutData.status || ''
         ).toLowerCase() !==
           'success'
       ) {
@@ -2599,26 +2435,97 @@ app.post(
       }
 
       const payoutInfo =
-        payoutData.data ||
-        {};
+        payoutData.data || {};
+
+      const returnedTransactionId =
+        payoutInfo.transaction_id;
+
+      if (
+        returnedTransactionId &&
+        String(
+          returnedTransactionId
+        ) !==
+          String(
+            withdrawal.payout_transaction_id
+          )
+      ) {
+        console.error(
+          'WATCHPAYS TRANSACTION ID MISMATCH',
+          {
+            local:
+              withdrawal.payout_transaction_id,
+
+            gateway:
+              returnedTransactionId
+          }
+        );
+
+        withdrawal.status =
+          'failed';
+
+        await withdrawal.save();
+
+        await refundWithdrawal(
+          withdrawal._id,
+          'WatchPays transaction ID mismatch.'
+        );
+
+        return res.status(502).json({
+          success: false,
+
+          message:
+            'WatchPays transaction ID mismatch. Amount has been refunded.'
+        });
+      }
+
+      const gatewayAmountPaise =
+        payoutInfo.amount !== undefined
+          ? moneyToPaise(
+              payoutInfo.amount
+            )
+          : withdrawal.amount;
+
+      if (
+        gatewayAmountPaise !==
+        withdrawal.amount
+      ) {
+        withdrawal.status =
+          'failed';
+
+        await withdrawal.save();
+
+        await refundWithdrawal(
+          withdrawal._id,
+          'WatchPays payout amount mismatch.'
+        );
+
+        return res.status(502).json({
+          success: false,
+
+          message:
+            'WatchPays payout amount mismatch. Amount has been refunded.'
+        });
+      }
 
       const feePaise =
         moneyToPaise(
-          payoutInfo.fee ||
-            0
+          payoutInfo.fee || 0
         ) || 0;
 
       const totalPaise =
-        moneyToPaise(
-          payoutInfo.total_amount ||
-            payoutAmount
-        ) || pa;
+        payoutInfo.total_amount !==
+          undefined
+          ? moneyToPaise(
+              payoutInfo.total_amount
+            )
+          : withdrawal.amount +
+            feePaise;
 
       withdrawal.payout_fee =
         feePaise;
 
       withdrawal.payout_total_amount =
-        totalPaise;
+        totalPaise || withdrawal.amount;
 
       withdrawal.status =
         'processing';
@@ -2652,7 +2559,7 @@ app.post(
 
         totalAmount:
           paiseToMoney(
-            totalPaise
+            withdrawal.payout_total_amount
           ),
 
         balance:
@@ -2740,17 +2647,12 @@ async function refundWithdrawal(
             user_id:
               withdrawal.user_id,
 
-            balance:
-              0
+            balance: 0
           });
 
         const newBalance =
-          Number(
-            wallet.balance
-          ) +
-          Number(
-            withdrawal.amount
-          );
+          Number(wallet.balance) +
+          Number(withdrawal.amount);
 
         wallet.balance =
           newBalance;
@@ -2829,26 +2731,6 @@ async function refundWithdrawal(
    WATCHPAYS PAYOUT CALLBACK
    ====================================================== */
 
-/*
- * Success:
- * {
- *   merchant_id: 100555001,
- *   transaction_id: "WD_...",
- *   amount: "150.00",
- *   status: "SUCCESS",
- *   timestamp: "..."
- * }
- *
- * Failed:
- * {
- *   merchant_id: 100555001,
- *   transaction_id: "WD_...",
- *   amount: "150.00",
- *   status: "FAILED",
- *   timestamp: "..."
- * }
- */
-
 app.post(
   '/api/watchpays/payout-callback',
   async (req, res) => {
@@ -2862,9 +2744,10 @@ app.post(
       } = req.body || {};
 
       if (
-        !merchant_id ||
+        merchant_id === undefined ||
         !transaction_id ||
-        !amount ||
+        amount === undefined ||
+        amount === null ||
         !status
       ) {
         return res.status(400).send(
@@ -2873,12 +2756,8 @@ app.post(
       }
 
       if (
-        String(
-          merchant_id
-        ) !==
-        String(
-          WATCHPAYS_MERCHANT_ID
-        )
+        String(merchant_id) !==
+        String(WATCHPAYS_MERCHANT_ID)
       ) {
         return res.status(400).send(
           'merchant mismatch'
@@ -2888,9 +2767,7 @@ app.post(
       const withdrawal =
         await Withdrawal.findOne({
           payout_transaction_id:
-            String(
-              transaction_id
-            )
+            String(transaction_id)
         });
 
       if (!withdrawal) {
@@ -2900,17 +2777,12 @@ app.post(
       }
 
       const callbackPaise =
-        moneyToPaise(
-          amount
-        );
+        moneyToPaise(amount);
 
       if (
-        callbackPaise ===
-          null ||
+        callbackPaise === null ||
         callbackPaise !==
-          Number(
-            withdrawal.amount
-          )
+          Number(withdrawal.amount)
       ) {
         return res.status(400).send(
           'amount mismatch'
@@ -2918,12 +2790,10 @@ app.post(
       }
 
       const normalizedStatus =
-        String(
-          status
-        ).toUpperCase();
+        String(status).toUpperCase();
 
       /*
-       * Duplicate SUCCESS/FAILED callbacks.
+       * Duplicate SUCCESS
        */
       if (
         withdrawal.status ===
@@ -2931,20 +2801,19 @@ app.post(
         normalizedStatus ===
           'SUCCESS'
       ) {
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
+      /*
+       * Duplicate FAILED
+       */
       if (
         withdrawal.status ===
           'rejected' &&
         normalizedStatus ===
           'FAILED'
       ) {
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
       withdrawal.payout_callback_status =
@@ -2972,9 +2841,7 @@ app.post(
 
         await withdrawal.save();
 
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
       if (
@@ -2988,20 +2855,16 @@ app.post(
           'WatchPays payout callback returned FAILED.'
         );
 
-        return res.send(
-          'success'
-        );
+        return res.send('success');
       }
 
       /*
-       * Unknown statuses are stored but
-       * do not change/refund wallet.
+       * Unknown status:
+       * save only, don't refund.
        */
       await withdrawal.save();
 
-      return res.send(
-        'success'
-      );
+      return res.send('success');
     } catch (e) {
       console.error(
         'WATCHPAYS PAYOUT CALLBACK ERROR:',
@@ -3042,9 +2905,7 @@ app.get(
             id: x._id,
 
             amount:
-              paiseToMoney(
-                x.amount
-              ),
+              paiseToMoney(x.amount),
 
             currency:
               x.currency,
@@ -3061,15 +2922,13 @@ app.get(
                 : null,
 
             accountName:
-              x.account_name ||
-              null,
+              x.account_name || null,
 
             ifsc:
               x.ifsc || null,
 
             bankName:
-              x.bank_name ||
-              null,
+              x.bank_name || null,
 
             payoutTransactionId:
               x.payout_transaction_id ||
@@ -3092,8 +2951,7 @@ app.get(
               x.created_at,
 
             processedAt:
-              x.processed_at ||
-              null
+              x.processed_at || null
           }))
       });
     } catch (e) {
@@ -3208,9 +3066,7 @@ app.post(
         req.params.id;
 
       const amount =
-        Number(
-          req.body.amount
-        );
+        Number(req.body.amount);
 
       const type =
         String(
@@ -3225,56 +3081,45 @@ app.post(
         ).trim();
 
       if (
-        !mongoose.isValidObjectId(
-          uid
-        ) ||
-        !Number.isFinite(
-          amount
-        ) ||
+        !mongoose.isValidObjectId(uid) ||
+        !Number.isFinite(amount) ||
         amount <= 0
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid user or amount.'
         });
       }
 
       if (
-        ![
-          'credit',
-          'debit'
-        ].includes(type)
+        !['credit', 'debit'].includes(
+          type
+        )
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid balance adjustment type.'
         });
       }
 
       const u =
-        await User.findById(
-          uid
-        ).select(
-          '_id name phone'
-        );
+        await User.findById(uid)
+          .select(
+            '_id name phone'
+          );
 
       if (!u) {
         return res.status(404).json({
           success: false,
-
           message:
             'User not found.'
         });
       }
 
       const pa =
-        moneyToPaise(
-          amount
-        );
+        moneyToPaise(amount);
 
       const delta =
         type === 'debit'
@@ -3284,7 +3129,7 @@ app.post(
       const dbSession =
         await mongoose.startSession();
 
-      let result;
+      let result = null;
 
       try {
         await dbSession.withTransaction(
@@ -3297,29 +3142,19 @@ app.post(
               )) ||
               new Wallet({
                 user_id: uid,
-
-                balance:
-                  0
+                balance: 0
               });
 
             const oldBalance =
-              Number(
-                w.balance
-              );
+              Number(w.balance);
 
             const newBalance =
-              oldBalance +
-              delta;
+              oldBalance + delta;
 
-            if (
-              newBalance < 0
-            ) {
+            if (newBalance < 0) {
               result = {
-                error:
-                  'NEGATIVE',
-
-                old:
-                  oldBalance
+                error: 'NEGATIVE',
+                old: oldBalance
               };
 
               return;
@@ -3339,8 +3174,7 @@ app.post(
             await WalletTransaction.create(
               [
                 {
-                  user_id:
-                    uid,
+                  user_id: uid,
 
                   type:
                     'admin_adjustment',
@@ -3359,12 +3193,8 @@ app.post(
                     Date.now() +
                     '_' +
                     crypto
-                      .randomBytes(
-                        3
-                      )
-                      .toString(
-                        'hex'
-                      )
+                      .randomBytes(3)
+                      .toString('hex')
                 }
               ],
               {
@@ -3496,9 +3326,7 @@ async function getAdminWithdrawals() {
         u ? u.phone : '',
 
       amount:
-        paiseToMoney(
-          x.amount
-        ),
+        paiseToMoney(x.amount),
 
       currency:
         x.currency,
@@ -3515,15 +3343,13 @@ async function getAdminWithdrawals() {
           : null,
 
       accountName:
-        x.account_name ||
-        null,
+        x.account_name || null,
 
       ifsc:
         x.ifsc || null,
 
       bankName:
-        x.bank_name ||
-        null,
+        x.bank_name || null,
 
       payoutTransactionId:
         x.payout_transaction_id ||
@@ -3546,8 +3372,7 @@ async function getAdminWithdrawals() {
         x.created_at,
 
       processedAt:
-        x.processed_at ||
-        null
+        x.processed_at || null
     };
   });
 }
@@ -3592,27 +3417,21 @@ app.post(
         req.params.id;
 
       if (
-        !mongoose.isValidObjectId(
-          id
-        )
+        !mongoose.isValidObjectId(id)
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid withdrawal ID.'
         });
       }
 
       const w =
-        await Withdrawal.findById(
-          id
-        );
+        await Withdrawal.findById(id);
 
       if (!w) {
         return res.status(404).json({
           success: false,
-
           message:
             'Withdrawal not found.'
         });
@@ -3622,13 +3441,10 @@ app.post(
         ![
           'pending',
           'processing'
-        ].includes(
-          w.status
-        )
+        ].includes(w.status)
       ) {
         return res.status(409).json({
           success: false,
-
           message:
             'Withdrawal is already ' +
             w.status +
@@ -3679,27 +3495,21 @@ app.post(
         req.params.id;
 
       if (
-        !mongoose.isValidObjectId(
-          id
-        )
+        !mongoose.isValidObjectId(id)
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid withdrawal ID.'
         });
       }
 
       const w =
-        await Withdrawal.findById(
-          id
-        );
+        await Withdrawal.findById(id);
 
       if (!w) {
         return res.status(404).json({
           success: false,
-
           message:
             'Withdrawal not found.'
         });
@@ -3709,27 +3519,16 @@ app.post(
         ![
           'pending',
           'processing'
-        ].includes(
-          w.status
-        )
+        ].includes(w.status)
       ) {
         return res.status(409).json({
           success: false,
-
           message:
             'Withdrawal is already ' +
             w.status +
             '.'
         });
       }
-
-      /*
-       * For WatchPays BANK payouts, the callback should
-       * normally mark the withdrawal completed.
-       *
-       * Admin complete is retained for manual/UPI
-       * withdrawals and emergency administration.
-       */
 
       w.status =
         'completed';
@@ -3746,7 +3545,7 @@ app.post(
           'Withdrawal marked as completed.',
 
         note:
-          'This records the payout only. It does not send money.',
+          'This does not send money; it only records completion.',
 
         amount:
           paiseToMoney(
@@ -3770,7 +3569,7 @@ app.post(
 );
 
 /* ======================================================
-   ADMIN REJECT + REFUND
+   ADMIN REJECT
    ====================================================== */
 
 app.post(
@@ -3782,13 +3581,10 @@ app.post(
         req.params.id;
 
       if (
-        !mongoose.isValidObjectId(
-          id
-        )
+        !mongoose.isValidObjectId(id)
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid withdrawal ID.'
         });
@@ -3805,14 +3601,11 @@ app.post(
         !result.refunded
       ) {
         const current =
-          await Withdrawal.findById(
-            id
-          );
+          await Withdrawal.findById(id);
 
         if (!current) {
           return res.status(404).json({
             success: false,
-
             message:
               'Withdrawal not found.'
           });
@@ -3820,7 +3613,6 @@ app.post(
 
         return res.status(409).json({
           success: false,
-
           message:
             'Withdrawal is already ' +
             current.status +
@@ -3871,52 +3663,41 @@ app.post(
     try {
       const action =
         String(
-          req.body.action ||
-            ''
+          req.body.action || ''
         ).toLowerCase();
 
       const id =
         req.params.id;
 
       if (
-        ![
-          'reject',
-          'paid'
-        ].includes(action)
+        !['reject', 'paid'].includes(
+          action
+        )
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Action must be reject or paid.'
         });
       }
 
       if (
-        !mongoose.isValidObjectId(
-          id
-        )
+        !mongoose.isValidObjectId(id)
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             'Invalid withdrawal ID.'
         });
       }
 
-      if (
-        action === 'paid'
-      ) {
+      if (action === 'paid') {
         const w =
-          await Withdrawal.findById(
-            id
-          );
+          await Withdrawal.findById(id);
 
         if (!w) {
           return res.status(404).json({
             success: false,
-
             message:
               'Withdrawal not found.'
           });
@@ -3926,13 +3707,10 @@ app.post(
           ![
             'pending',
             'processing'
-          ].includes(
-            w.status
-          )
+          ].includes(w.status)
         ) {
           return res.status(409).json({
             success: false,
-
             message:
               'Withdrawal is already ' +
               w.status +
@@ -3955,7 +3733,7 @@ app.post(
             'Withdrawal marked as completed.',
 
           note:
-            'This endpoint does not send money. Mark paid only after the real payout has been sent.',
+            'This endpoint does not send money.',
 
           amount:
             paiseToMoney(
@@ -3975,14 +3753,11 @@ app.post(
         !result.refunded
       ) {
         const current =
-          await Withdrawal.findById(
-            id
-          );
+          await Withdrawal.findById(id);
 
         if (!current) {
           return res.status(404).json({
             success: false,
-
             message:
               'Withdrawal not found.'
           });
@@ -3990,7 +3765,6 @@ app.post(
 
         return res.status(409).json({
           success: false,
-
           message:
             'Withdrawal is already ' +
             current.status +
@@ -4078,9 +3852,7 @@ app.get(
           rows.map((x) => {
             const u =
               userMap.get(
-                String(
-                  x.user_id
-                )
+                String(x.user_id)
               );
 
             return {
@@ -4221,34 +3993,20 @@ app.get(
           ])
         ]);
 
-      const totalBalance =
-        balanceAgg[0]?.total ||
-        0;
-
-      const totalWithdrawals =
-        withdrawalsAgg[0]?.total ||
-        0;
-
-      const totalPayments =
-        paymentsAgg[0]?.total ||
-        0;
-
       return res.json({
         success: true,
 
         totalUsers:
-          Number(
-            totalUsers
-          ),
+          Number(totalUsers),
 
         totalBalance:
           paiseToMoney(
-            totalBalance
+            balanceAgg[0]?.total || 0
           ),
 
         totalWithdrawals:
           paiseToMoney(
-            totalWithdrawals
+            withdrawalsAgg[0]?.total || 0
           ),
 
         pendingWithdrawals:
@@ -4258,7 +4016,7 @@ app.get(
 
         totalPayments:
           paiseToMoney(
-            totalPayments
+            paymentsAgg[0]?.total || 0
           )
       });
     } catch (e) {
@@ -4318,18 +4076,16 @@ app.get(
 app.post(
   '/api/logout',
   (req, res) => {
-    req.session.destroy(
-      () => {
-        res.clearCookie(
-          'truewalk.sid'
-        );
+    req.session.destroy(() => {
+      res.clearCookie(
+        'truewalk.sid'
+      );
 
-        res.json({
-          message:
-            'Logout successful.'
-        });
-      }
-    );
+      res.json({
+        message:
+          'Logout successful.'
+      });
+    });
   }
 );
 
